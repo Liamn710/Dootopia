@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-
-
+import { auth } from '../FirebaseConfig'; // Adjust the import path as necessary
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth"; // Import Firebase auth functions
 export default function Index() {
   const [email, setEmail]=useState("");//state variable for setting an email
   const [password , setPassword]=useState("");// state variable for the password
@@ -16,6 +16,23 @@ export default function Index() {
       return;
     }
   console.log("Login attempted with",email,password);
+  }
+
+  const signIn = async () => {
+    try { 
+      const user = await signInWithEmailAndPassword(auth, email, password);
+      console.log("User signed in:", user);
+    }catch (error) {
+      console.error("Error signing in:", error);    
+
+        }    }
+  const signUp = async () => {
+    try { 
+      const user = await createUserWithEmailAndPassword(auth, email, password);
+      console.log("User signed up:", user);
+    }catch (error) {
+      console.error("Error signing up:", error);    
+    }
   }
 
 
@@ -42,9 +59,12 @@ export default function Index() {
         secureTextEntry
         />
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+      <TouchableOpacity style={styles.button} onPress={signIn}>
           <Text style={styles.buttonText}>Log In</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.button} onPress={signUp}>
+          <Text style={styles.buttonText}>Sign Up</Text>
+          </TouchableOpacity>
 
 
       </View>
