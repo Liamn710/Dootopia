@@ -1,2 +1,2 @@
 # Dootopia
-The Best To-List ever!
+The Best To-Do List ever!
