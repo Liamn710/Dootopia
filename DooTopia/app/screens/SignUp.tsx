@@ -66,12 +66,13 @@ export default function SignUpScreen() {
         onPress={async () => {
           const success = await handleSignUp();
           if (success) {
-            await createUserInMongo(); // You can pass user data here
-    }
-  }}
->
-  <Text style={styles.buttonText}>Sign Up</Text>
-</TouchableOpacity>
+            await createUserInMongo();
+            router.back(); // You can pass user data here
+          }
+        }}
+      >
+        <Text style={styles.buttonText}>Sign Up</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.back()}>
         <Text style={{ marginTop: 20, color: '#555' }}>Already have an account? Go back</Text>
