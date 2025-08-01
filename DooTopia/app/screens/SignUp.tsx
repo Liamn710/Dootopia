@@ -3,26 +3,48 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../FirebaseConfig'; // Adjust path if needed
 import { useRouter } from 'expo-router';
+import axios from 'axios';
+
 export default function SignUpScreen() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
 
-  const handleSignUp = async () => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log("User signed up:", userCredential.user);
-      Alert.alert("Success", "Account created!");
-      router.replace('./HomeScreen'); // Optional: go back to login
-    } catch (error: any) {
-      console.error("Error signing up:", error);
-      Alert.alert("Error", error.message);
+  function createUserInMongo() {
+    let userObject = {
+      name: name,
+      email: email,
+      points: 0,
+      createdAt: new Date().toISOString(),
     }
-  };
+    axios.post('http://localhost:3000/users', userObject)
+  }
+
+  const handleSignUp = async (): Promise<boolean> => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    console.log("User signed up:", userCredential.user);
+    Alert.alert("Success", "Account created!");
+    return true;
+  } catch (error: any) {
+    console.error("Error signing up:", error);
+    Alert.alert("Error", error.message);
+    return false;
+  }
+};
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create Account</Text>
+      
+      <TextInput
+        style={styles.input}
+        placeholder="Username"
+        value={name}
+        onChangeText={setName}
+      />
+
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -30,6 +52,7 @@ export default function SignUpScreen() {
         onChangeText={setEmail}
         autoCapitalize="none"
       />
+
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -38,7 +61,16 @@ export default function SignUpScreen() {
         secureTextEntry
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleSignUp}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={async () => {
+          const success = await handleSignUp();
+          if (success) {
+            await createUserInMongo();
+            router.back(); // You can pass user data here
+          }
+        }}
+      >
         <Text style={styles.buttonText}>Sign Up</Text>
       </TouchableOpacity>
 

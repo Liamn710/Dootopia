@@ -1,11 +1,14 @@
 
 
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth"; // Import Firebase auth functions
-import { useState } from 'react';
+import { useState, useEffect, use } from 'react';
+// import axios from "axios";
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { auth } from '../../FirebaseConfig'; // Adjust the import path as necessary
 import { useRouter } from 'expo-router';
 export default function HomeScreen() {
+  const [data, setData] = useState([]); // State to hold fetched data
+
   const [email, setEmail]=useState("");//state variable for setting an email
   const [password , setPassword]=useState("");// state variable for the password
   const router = useRouter();
@@ -19,6 +22,7 @@ export default function HomeScreen() {
   // console.log("Login attempted with",email,password);
   // }
 
+
   const signIn = async () => {
     try { 
       const user = await signInWithEmailAndPassword(auth, email, password);
@@ -27,16 +31,7 @@ export default function HomeScreen() {
       console.error("Error signing in:", error);    
 
         }    }
-  const signUp = async () => {
-    try { 
-      const user = await createUserWithEmailAndPassword(auth, email, password);
-      console.log("User signed up:", user);
-    }catch (error) {
-      console.error("Error signing up:", error);    
-    }
-  }
-
-
+        
   return (
     <View style={styles.container}>
 
