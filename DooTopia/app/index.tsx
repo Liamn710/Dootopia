@@ -5,7 +5,7 @@ export const options = {
   headerShown: false,
 };
 const index = () => {
-  return <Redirect href="/screens/HomeScreen" />;
+  return <Redirect href="./screens/Tasks" />;
 };
 
 export default index;
