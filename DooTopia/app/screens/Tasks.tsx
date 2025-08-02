@@ -1,11 +1,9 @@
 import * as React from 'react';
-import { Text } from 'react-native-paper';
 import BottomTabNavigation, { TabRoute } from '../components/BottomTabNavigation';
-
-const TasksRoute = () => <Text>Tasks</Text>;
-const CalendarRoute = () => <Text>calendar</Text>;
-const PrizesRoute = () => <Text>Prizes</Text>;
-const ProfileRoute = () => <Text>Profile</Text>;
+import CalendarPage from './CalendarPage';
+import PrizesPage from './PrizesPage';
+import ProfilePage from './ProfilePage';
+import TasksPage from './TasksPage';
 
 const MyComponent = () => {
   const routes: TabRoute[] = [
@@ -13,25 +11,25 @@ const MyComponent = () => {
       key: 'tasks', 
       title: 'Tasks', 
       iconName: 'check',
-      component: TasksRoute
+      component: TasksPage
     },
     { 
       key: 'calendar', 
       title: 'calendar', 
       iconName: 'calendar-month',
-      component: CalendarRoute
+      component: CalendarPage
     },
     { 
       key: 'prizes', 
       title: 'rewards', 
       iconName: 'emoji-events',
-      component: PrizesRoute
+      component: PrizesPage
     },
     { 
       key: 'profile', 
       title: 'profile', 
       iconName: 'person',
-      component: ProfileRoute
+      component: ProfilePage
     },
   ];
 

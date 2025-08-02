@@ -2,11 +2,11 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
-const PrizesPage = () => {
+const TasksPage = () => {
   return (
     <View style={styles.container}>
-      <Text variant="headlineMedium">Prizes Page</Text>
-      <Text>Rewards and prizes content will go here</Text>
+      <Text variant="headlineMedium">Tasks Page</Text>
+      <Text>Task management content will go here</Text>
     </View>
   );
 };
@@ -20,4 +20,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PrizesPage;
+export default TasksPage;

@@ -18,6 +18,18 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Android
+android/.gradle/
+android/app/.cxx/
+android/app/build/
+android/build/
+android/gradle/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+*.apk
+*.aab
+
 # Metro
 .metro-health-check*
 
@@ -32,8 +44,22 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+*.env
+config.env
+.env.development
+.env.production
+.env.staging
+
+# Firebase config (contains sensitive keys)
+FirebaseConfig.ts
+firebase-config.ts
+firebaseConfig.ts
 
 # typescript
 *.tsbuildinfo
 
 app-example
+
+# Reference pages (development only)
+app/screens/reference/
