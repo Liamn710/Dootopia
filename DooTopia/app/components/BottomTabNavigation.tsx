@@ -1,30 +1,51 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as React from 'react';
 import { BottomNavigation } from 'react-native-paper';
+import CalendarPage from '../screens/CalendarPage';
+import PrizesPage from '../screens/PrizesPage';
+import ProfilePage from '../screens/ProfilePage';
+import TasksPage from '../screens/TasksPage';
 
-export interface TabRoute {
+interface TabRoute {
   key: string;
   title: string;
   iconName: keyof typeof MaterialIcons.glyphMap;
   component: React.ComponentType<any>;
 }
 
-interface BottomTabNavigationProps {
-  routes: TabRoute[];
-  initialIndex?: number;
-  onIndexChange?: (index: number) => void;
-}
+const BottomTabNavigation = () => {
+  const [index, setIndex] = React.useState(0);
 
-const BottomTabNavigation: React.FC<BottomTabNavigationProps> = ({
-  routes,
-  initialIndex = 0,
-  onIndexChange
-}) => {
-  const [index, setIndex] = React.useState(initialIndex);
+  const routes: TabRoute[] = [
+    { 
+      key: 'tasks', 
+      title: 'Tasks', 
+      iconName: 'check',
+      component: TasksPage
+    },
+    { 
+      key: 'calendar', 
+      title: 'calendar', 
+      iconName: 'calendar-month',
+      component: CalendarPage
+    },
+    { 
+      key: 'prizes', 
+      title: 'rewards', 
+      iconName: 'emoji-events',
+      component: PrizesPage
+    },
+    { 
+      key: 'profile', 
+      title: 'profile', 
+      iconName: 'person',
+      component: ProfilePage
+    },
+  ];
 
   const handleIndexChange = (newIndex: number) => {
     setIndex(newIndex);
-    onIndexChange?.(newIndex);
+    console.log('Tab changed to index:', newIndex);
   };
 
   const navigationRoutes = routes.map(route => ({
@@ -38,7 +59,6 @@ const BottomTabNavigation: React.FC<BottomTabNavigationProps> = ({
   const renderScene = React.useMemo(() => {
     const sceneMap: { [key: string]: React.ComponentType<any> } = {};
     routes.forEach(route => {
-      // Wrap the component to handle the navigation props
       sceneMap[route.key] = (props: any) => <route.component {...props} />;
     });
     return BottomNavigation.SceneMap(sceneMap);

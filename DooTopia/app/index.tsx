@@ -1,11 +1,11 @@
-import { StyleSheet, Text, View } from "react-native";
 import React from "react";
-import { Redirect } from "expo-router";
+import { StyleSheet } from "react-native";
+import BottomTabNavigation from "./components/BottomTabNavigation";
 export const options = {
   headerShown: false,
 };
 const index = () => {
-  return <Redirect href="./screens/Tasks" />;
+  return <BottomTabNavigation />;
 };
 
 export default index;
