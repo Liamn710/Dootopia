@@ -33,8 +33,8 @@ const PrizesPage = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    alignSelf: 'flex-start',
     padding: 16,
-    backgroundColor: '#f5f5f5',
   },
 });
 

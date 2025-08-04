@@ -23,6 +23,7 @@ const BottomTabNavigation = () => {
       iconName: 'check',
       component: TasksPage
     },
+    
     { 
       key: 'calendar', 
       title: 'calendar', 

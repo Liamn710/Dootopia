@@ -1,14 +1,15 @@
 import * as React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { IconButton, TextInput } from 'react-native-paper';
 
-interface Subtask {
+
+export interface Subtask {
   id: string;           // Unique identifier
   text: string;         // Subtask content
   completed: boolean;   // Completion status
 }
 
-interface Task {
+export interface Task {
   id: string;           // Unique identifier
   text: string;         // Task content
   completed: boolean;   // Completion status
@@ -16,17 +17,54 @@ interface Task {
   expanded: boolean;    // Show/hide subtasks
 }
 
-interface TasksAddBarProps {
-  onAddTask: (taskText: string)=>void;
-}
 
-const TasksAddBar: React.FC<TasksAddBarProps> = ({ onAddTask }) => (
-  <IconButton
-    icon="plus"
-    iconColor="#5A8A93" // Matches your app's color scheme
-    size={24}
+export interface TasksAddBarProps {
+    onAddTask: (taskText: string) => void; // Function to handle adding a new task
+    }
 
-  />
-);
+const TasksAddBar = ({onAddTask} : TasksAddBarProps) => {
+    const [taskText , setTaskText] = React.useState<string>(''); // State for task input
+
+    const handleAddTask = () => {
+        if (taskText.trim()) {
+            onAddTask(taskText.trim()); // Call the function to add the task
+            setTaskText(''); // Clear the input field
+        }
+    };
+    
+    return (
+        <View style={styles.container}>
+            <TextInput
+                label="Add a new task"
+                value={taskText}
+                onChangeText={setTaskText}
+                style={styles.input}
+                mode="outlined"
+            />
+            <IconButton
+                icon="plus"
+                size={24}
+                onPress={handleAddTask}
+                style={styles.button}
+            />
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#fff',
+    },
+    input: {
+        flex: 1,
+        marginRight: 8,
+    },
+    button: {
+        margin: 0,
+    },
+});
 
 export default TasksAddBar;
