@@ -1,3 +1,4 @@
+import AntDesign from '@expo/vector-icons/AntDesign';
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { IconButton, TextInput } from 'react-native-paper';
@@ -40,9 +41,13 @@ const TasksAddBar = ({onAddTask} : TasksAddBarProps) => {
                 onChangeText={setTaskText}
                 style={styles.input}
                 mode="outlined"
+                autoCapitalize="sentences"
+                returnKeyType="done"
+                onSubmitEditing={handleAddTask}
+                blurOnSubmit={false}
             />
             <IconButton
-                icon="plus"
+                icon={() => <AntDesign name="plus" size={24} color="#666" />}
                 size={24}
                 onPress={handleAddTask}
                 style={styles.button}

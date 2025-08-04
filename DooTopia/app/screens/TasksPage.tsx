@@ -1,7 +1,8 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import React from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View, ScrollView } from 'react-native';
-import { Checkbox, Divider, IconButton, Text } from 'react-native-paper';
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { Divider, IconButton, Text } from 'react-native-paper';
+import CustomCheckbox from '../components/CustomCheckbox';
 import TasksAddBar, { Subtask, Task } from '../components/TasksAddBar';
 
 
@@ -127,7 +128,7 @@ const TasksPage = () => {
   const renderTask = ({ item }: { item: Task }) => (
     <View style={styles.taskCard}>
       <View style={styles.taskContent}>
-        <Checkbox
+        <CustomCheckbox
           status ={item.completed ? 'checked' : 'unchecked'}
           onPress={() => toggleTask(item.id)}
         />
@@ -153,7 +154,7 @@ const TasksPage = () => {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <Text variant="headlineMedium" style={styles.title}>Tasks Page</Text>
@@ -164,7 +165,7 @@ const TasksPage = () => {
         renderItem={renderTask}
         style={styles.tasksList}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps= "handled"
       />
       <TasksAddBar onAddTask={addTask} />
     </KeyboardAvoidingView>

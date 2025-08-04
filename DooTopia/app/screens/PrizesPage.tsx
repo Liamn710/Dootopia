@@ -1,9 +1,12 @@
 
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { PrizeCard } from '../components/PrizeCars';
+import { PrizeCard } from '../components/PrizeCard';
+import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
+
 
 const PrizesPage = () => {
+  
   const handleCancel = () => {
     console.log('Cancel pressed');
   };
