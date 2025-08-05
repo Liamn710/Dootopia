@@ -1,12 +1,18 @@
 
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
+import FavButton from '../components/FavButton';
 import { PrizeCard } from '../components/PrizeCard';
-import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
-
 
 const PrizesPage = () => {
   
+
+
+  const addNewCard = () => {
+    console.log('Add new card pressed');
+    
+  }
+
   const handleCancel = () => {
     console.log('Cancel pressed');
   };
@@ -29,6 +35,7 @@ const PrizesPage = () => {
         onCompleted={handleOk}
         onCardPress={handleCardPress}
       />
+      <FavButton />
     </View>
   );
 };
