@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../FirebaseConfig'; // Adjust path if needed
-import { useRouter } from 'expo-router';
 import axios from 'axios';
+import { useRouter } from 'expo-router';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { auth } from '../../FirebaseConfig'; // Adjust path if needed
 
 export default function SignUpScreen() {
   const [name, setName] = useState('');
@@ -20,6 +20,36 @@ export default function SignUpScreen() {
     }
     axios.post('http://localhost:3000/users', userObject)
   }
+
+  // function createTaskInMongo() {
+  //   let taskObject = {
+  //     title: "Welcome Task",
+  //     text: "Complete your profile",
+  //     completed: false,
+  //     createdAt: new Date().toISOString(),
+  //     points: 10,
+  //     userId: "sdnfkjnsd"
+  //   }
+  //   axios.post('http://localhost:3000/tasks', taskObject)
+  // }
+  // async function createNewTaskInMongo() {
+  //   let taskObject = {
+  //     title: "Welcome Task11111",
+  //     text: "Complete your profile",
+  //     completed: false,
+  //     createdAt: new Date().toISOString(),
+  //     points: 101,
+  //     userId: "sdnfkjnsd" // Replace with actual user ID
+  //   };
+
+  //   try {
+  //     await createTask(taskObject);
+  //     console.log("Task created successfully");
+  //   } catch (error) {
+  //     console.error("Error creating task:", error);
+  //   }
+  // }
+
 
   const handleSignUp = async (): Promise<boolean> => {
   try {
@@ -74,10 +104,12 @@ export default function SignUpScreen() {
         <Text style={styles.buttonText}>Sign Up</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.back()}>
+      <TouchableOpacity onPress={() => router.push('./HomeScreen')} style={{ marginTop: 20 }}>
         <Text style={{ marginTop: 20, color: '#555' }}>Already have an account? Go back</Text>
       </TouchableOpacity>
     </View>
+
+    
   );
 }
 
