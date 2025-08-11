@@ -1,7 +1,8 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { IconButton, TextInput } from 'react-native-paper';
+import { IconButton, TextInput} from 'react-native-paper';
+import FavButton from './FavButton';
 
 
 export interface Subtask {

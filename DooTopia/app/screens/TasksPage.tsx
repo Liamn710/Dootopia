@@ -4,15 +4,18 @@ import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'reac
 import { Divider, IconButton, Text } from 'react-native-paper';
 import CustomCheckbox from '../components/CustomCheckbox';
 import TasksAddBar, { Subtask, Task } from '../components/TasksAddBar';
-
+import { auth } from '../../FirebaseConfig';
+import axios from 'axios';
 
 const TasksPage = () => {
   const [tasks, setTasks] = React.useState<{ [id: string]: Task }>({});
+  const [isLoading, setIsLoading] = React.useState(true);
   const tasksArray = Object.values(tasks);
+    const userId = auth.currentUser?.uid;
 
 
   const addTask = (taskText: string) => {
-        const newTask: Task = {
+      const newTask: Task = {
       id: Date.now().toString(),
       text: taskText,
       completed:false,
@@ -65,6 +68,8 @@ const TasksPage = () => {
       return prevTasks;
     });
    };
+
+
   const toggleSubtask = (taskId: string, subtaskId: string) => {
     setTasks(prevTasks => {
       const task = prevTasks[taskId];

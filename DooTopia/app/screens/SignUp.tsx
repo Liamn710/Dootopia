@@ -11,8 +11,9 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const router = useRouter();
 
-  function createUserInMongo() {
+  function createUserInMongo(firebaseUserId: string) {
     let userObject = {
+      firebaseUserId: firebaseUserId,
       name: name,
       email: email,
       points: 0,
@@ -21,16 +22,16 @@ export default function SignUpScreen() {
     axios.post('http://localhost:3000/users', userObject)
   }
 
-  const handleSignUp = async (): Promise<boolean> => {
+  const handleSignUp = async (): Promise<string | false> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     console.log("User signed up:", userCredential.user);
     Alert.alert("Success", "Account created!");
-    return true;
+    return userCredential.user.uid; // Return the Firebase UID as string
   } catch (error: any) {
     console.error("Error signing up:", error);
     Alert.alert("Error", error.message);
-    return false;
+    return false; // Return false on error
   }
 };
 
@@ -64,12 +65,12 @@ export default function SignUpScreen() {
       <TouchableOpacity
         style={styles.button}
         onPress={async () => {
-          const success = await handleSignUp();
-          if (success) {
-            await createUserInMongo();
-            router.back(); // You can pass user data here
-          }
-        }}
+          const firebaseUserId = await handleSignUp();
+          if (firebaseUserId) {
+          await createUserInMongo(firebaseUserId);
+          router.replace("/screens/MainApp");
+  }
+}}
       >
         <Text style={styles.buttonText}>Sign Up</Text>
       </TouchableOpacity>

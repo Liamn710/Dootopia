@@ -1,5 +1,4 @@
 
-
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth"; // Import Firebase auth functions
 import { useState, useEffect, use } from 'react';
 // import axios from "axios";
@@ -12,26 +11,20 @@ export default function HomeScreen() {
   const [email, setEmail]=useState("");//state variable for setting an email
   const [password , setPassword]=useState("");// state variable for the password
   const router = useRouter();
-  // //login handling 
-  // const handleLogin = ()=> {s
-  //  if (!email || !password)
-  //   {
-  //     Alert.alert("Error","Please fiil in all fields");
-  //     return;
-  //   }
-  // console.log("Login attempted with",email,password);
-  // }
 
 
   const signIn = async () => {
     try { 
       const user = await signInWithEmailAndPassword(auth, email, password);
       console.log("User signed in:", user);
+      Alert.alert("Success", "Logged in successfully!");
+      router.replace("/components/BottomTabNavigation");
     }catch (error) {
-      console.error("Error signing in:", error);    
+      console.error("Error signing in:", error);
+      Alert.alert("Error", "Failed to log in.");
+    }
+  }
 
-        }    }
-        
   return (
     <View style={styles.container}>
 
@@ -57,6 +50,7 @@ export default function HomeScreen() {
 
       <TouchableOpacity style={styles.button} onPress={signIn}>
           <Text style={styles.buttonText}>Log In</Text>
+
       </TouchableOpacity>
       <TouchableOpacity style={styles.button} onPress={() => router.push('./SignUp')}>
         <Text style={styles.buttonText}>Sign Up</Text>

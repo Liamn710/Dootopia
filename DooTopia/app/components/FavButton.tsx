@@ -1,25 +1,39 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
-import { FAB } from 'react-native-paper';
-import AntDesign from 'react-native-vector-icons/AntDesign';
+import { TouchableOpacity, StyleSheet } from 'react-native';
+import { IconButton } from 'react-native-paper';
 
+interface FavButtonProps {
+  onPress: () => void;
+}
 
-const FavButton = () => (
-  <FAB
-    icon={() => <AntDesign name="plus" size={24} color="white" />}
-    style={styles.fab}
-    onPress={() => console.log('Pressed')}
-  />
-);
+const FavButton: React.FC<FavButtonProps> = ({ onPress }) => {
+  return (
+    <TouchableOpacity style={styles.fab} onPress={onPress}>
+      <IconButton 
+        icon="plus" 
+        size={24}
+        iconColor="white"
+      />
+    </TouchableOpacity>
+  );
+};
 
 const styles = StyleSheet.create({
   fab: {
-    color: 'white',
-    backgroundColor: '#6200EE',
     position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
+    bottom: 16,
+    right: 16,
+    backgroundColor: '#6200ee',
+    borderRadius: 28,
+    width: 56,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });
 
