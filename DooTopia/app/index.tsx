@@ -3,7 +3,6 @@ import { router } from "expo-router";
 import { onAuthStateChanged, User } from "firebase/auth";
 import React, { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
-
 const index = () => {
   const [user, setUser] = React.useState<User | null>(null);
   const [isInitializing, setIsInitializing] = React.useState(true);

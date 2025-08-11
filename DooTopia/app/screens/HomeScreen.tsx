@@ -1,13 +1,12 @@
 
+
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth"; // Import Firebase auth functions
 import { useState, useEffect, use } from 'react';
 // import axios from "axios";
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { auth } from '../../FirebaseConfig'; // Adjust the import path as necessary
-import { useRouter } from 'expo-router';
 export default function HomeScreen() {
   const [data, setData] = useState([]); // State to hold fetched data
-
   const [email, setEmail]=useState("");//state variable for setting an email
   const [password , setPassword]=useState("");// state variable for the password
   const router = useRouter();
