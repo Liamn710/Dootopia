@@ -1,7 +1,7 @@
+import { signOut } from 'firebase/auth';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
-import { signOut } from 'firebase/auth';
 import { auth } from '../../FirebaseConfig';
 
 const ProfilePage = () => {

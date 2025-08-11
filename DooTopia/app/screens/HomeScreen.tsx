@@ -1,8 +1,8 @@
 
 
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth"; // Import Firebase auth functions
-import { useState, useEffect, use } from 'react';
-// import axios from "axios";
+import { useRouter } from 'expo-router';
+import { signInWithEmailAndPassword } from "firebase/auth"; // Import Firebase auth functions
+import { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { auth } from '../../FirebaseConfig'; // Adjust the import path as necessary
 export default function HomeScreen() {

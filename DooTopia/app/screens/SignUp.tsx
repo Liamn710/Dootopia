@@ -22,7 +22,6 @@ export default function SignUpScreen() {
     axios.post('http://localhost:3000/users', userObject)
   }
 
-  const handleSignUp = async (): Promise<string | false> => {
   // function createTaskInMongo() {
   //   let taskObject = {
   //     title: "Welcome Task",
@@ -53,12 +52,13 @@ export default function SignUpScreen() {
   // }
 
 
-  const handleSignUp = async (): Promise<boolean> => {
+  const handleSignUp = async (): Promise<string | false> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     console.log("User signed up:", userCredential.user);
     Alert.alert("Success", "Account created!");
     return userCredential.user.uid; // Return the Firebase UID as string
+
   } catch (error: any) {
     console.error("Error signing up:", error);
     Alert.alert("Error", error.message);
@@ -69,7 +69,6 @@ export default function SignUpScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create Account</Text>
-      
       <TextInput
         style={styles.input}
         placeholder="Username"
@@ -144,3 +143,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
