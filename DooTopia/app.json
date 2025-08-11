@@ -19,9 +19,17 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
+      "build": {
+        "babel": {
+          "include": [
+            "@expo/vector-icons"
+          ]
+        }
+      },
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
+      
     },
     "plugins": [
       "expo-router",
