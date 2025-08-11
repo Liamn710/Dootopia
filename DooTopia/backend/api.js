@@ -53,3 +53,53 @@ export async function deleteUser(id) {
         return { error: "User deletion failed" };
     }
 }   
+
+export async function getTasks() {
+    const response = await axios.get(`${API_URL}/tasks`);
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "No tasks found" };
+    }
+}
+
+export async function getTaskById(id) {
+    const response = await axios.get(`${API_URL}/tasks/${id}`);
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "Task not found" };
+    }
+}
+
+export async function createTask(task) {
+    const response = await axios.post(`${API_URL}/tasks`, task);
+    if (response.status === 201) {
+        return response.data;
+    }
+    else {
+        return { error: "Task creation failed" };
+    }
+}
+
+export async function updateTask(id, task) {
+    const response = await axios.put(`${API_URL}/tasks/${id}`, task);
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "Task update failed" };
+    }
+}
+
+export async function deleteTask(id) {
+    const response = await axios.delete(`${API_URL}/tasks/${id}`);
+    if (response.status === 200) {
+        return { message: "Task deleted successfully" };
+    }
+    else {
+        return { error: "Task deletion failed" };
+    }
+}
