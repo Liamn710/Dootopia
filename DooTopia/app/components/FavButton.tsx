@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { IconButton } from 'react-native-paper';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface FavButtonProps {
   onPress: () => void;
@@ -9,10 +10,10 @@ interface FavButtonProps {
 const FavButton: React.FC<FavButtonProps> = ({ onPress }) => {
   return (
     <TouchableOpacity style={styles.fab} onPress={onPress}>
-      <IconButton 
-        icon="plus" 
-        size={24}
-        iconColor="white"
+      <MaterialIcons 
+        name="add"
+        size={30}
+        color="white"
       />
     </TouchableOpacity>
   );

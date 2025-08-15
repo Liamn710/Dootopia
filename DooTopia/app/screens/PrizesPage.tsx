@@ -5,6 +5,7 @@ import { Button, Dialog, Portal, TextInput, Card, IconButton, PaperProvider } fr
 import FavButton from '../components/FavButton';
 import { PrizeCard } from '../components/PrizeCard';
 import * as ImagePicker from 'expo-image-picker';
+import { MaterialIcons } from '@expo/vector-icons';
 
 
 

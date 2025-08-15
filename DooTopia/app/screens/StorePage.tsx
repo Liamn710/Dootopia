@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { StyleSheet, View, ScrollView, GestureResponderEvent, useWindowDimensions, Animated} from 'react-native';
-import { Button, Dialog, Portal, TextInput, Card, IconButton, PaperProvider } from 'react-native-paper';
+import { Button, Dialog, Portal, TextInput, Card, IconButton, PaperProvider ,Text} from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import * as ImagePicker from 'expo-image-picker';
@@ -33,7 +33,7 @@ const StorePage = () => {
         return '33%';
     }
 
-    const PictureCard =({imageUri}: {imageUri: string}) => {
+    const PictureCard =({imageUri,text}: {imageUri: string,text: {title: string, subtitle: string}}) => {
         const scaleAnim = new Animated.Value(1);
 
 
@@ -50,15 +50,18 @@ const StorePage = () => {
                 useNativeDriver: true,
             }),
         ]).start();
+
     };
         return (
             <Card style={[styles.picture_card, { width: getCardWidth() }]}>
                 <Card.Cover source={{ uri: imageUri }} />
+                <Card.Title title={text.title} subtitle={text.subtitle} />
                 <Card.Actions>
                     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
                         <MaterialIcons name="shopping-cart" size={24} color="black" onPress={onCartPress} />
                     </Animated.View>
                 </Card.Actions>
+                
             </Card>
         );
     }
@@ -68,12 +71,12 @@ const StorePage = () => {
       <ScrollView>
         <View style={styles.container}></View>
         <View style={styles.picture_grid_container}>
-                    <PictureCard imageUri='https://picsum.photos/300' />
-                    <PictureCard imageUri='https://picsum.photos/300' />
-                    <PictureCard imageUri='https://picsum.photos/200' />
-                    <PictureCard imageUri='https://picsum.photos/300' />
-                    <PictureCard imageUri='https://picsum.photos/200' />
-                    <PictureCard imageUri='https://picsum.photos/300' />
+                    <PictureCard imageUri='https://picsum.photos/300' text={{ title: 'Title 1', subtitle: 'Subtitle 1' }} />
+                    <PictureCard imageUri='https://picsum.photos/300' text={{ title: 'Title 2', subtitle: 'Subtitle 2' }} />
+                    <PictureCard imageUri='https://picsum.photos/200' text={{ title: 'Title 3', subtitle: 'Subtitle 3' }} />
+                    <PictureCard imageUri='https://picsum.photos/300' text={{ title: 'Title 4', subtitle: 'Subtitle 4' }} />
+                    <PictureCard imageUri='https://picsum.photos/200' text={{ title: 'Title 5', subtitle: 'Subtitle 5' }} />
+                    <PictureCard imageUri='https://picsum.photos/300' text={{ title: 'Title 6', subtitle: 'Subtitle 6' }} />
         </View>
       </ScrollView>
 
