@@ -1,14 +1,25 @@
 import { signOut } from 'firebase/auth';
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import * as React from 'react';
+import { StyleSheet, Touchable, TouchableOpacity, View } from 'react-native';
+import { Avatar, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
+import { router } from 'expo-router';
+
+
+const AvatarComponent = () => (
+  <Avatar.Image size={64} source={require('../../assets/images/avatar.png')} />
+);
+export { AvatarComponent };
 
 const ProfilePage = () => {
   return (
     <View style={styles.container}>
-      <Text variant="headlineMedium">Profile Page</Text>
-      <Text>User profile content will go here</Text>
+      <View style={styles.avatarContainer}>
+        <TouchableOpacity onPress={() => router.push("/screens/StorePage")}>
+          <AvatarComponent />
+        </TouchableOpacity>
+      </View>
+
     </View>
   );
 };
@@ -16,9 +27,15 @@ const ProfilePage = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
     padding: 20,
+  },
+
+  avatarContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 20,
   },
 });
 

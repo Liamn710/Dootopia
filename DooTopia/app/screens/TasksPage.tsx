@@ -21,6 +21,8 @@ const TasksPage = () => {
       completed:false,
       subtasks: [],
       expanded: false,
+      points: 0,
+      userId: userId || '',
     };
 
     setTasks(prevTasks => ({

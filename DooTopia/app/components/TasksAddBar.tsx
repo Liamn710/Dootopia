@@ -16,7 +16,9 @@ export interface Task {
   text: string;         // Task content
   completed: boolean;   // Completion status
   subtasks: Subtask[];  // Array of subtasks
-  expanded: boolean;    // Show/hide subtasks
+  expanded: boolean;  
+  points: number;       // Points associated with the task
+  userId: string;      // ID of the user who created the task
 }
 
 
