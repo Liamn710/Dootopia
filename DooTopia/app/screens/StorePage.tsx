@@ -1,29 +1,20 @@
-import * as React from 'react';
-import { StyleSheet, View, ScrollView, GestureResponderEvent, useWindowDimensions, Animated} from 'react-native';
-import { Button, Dialog, Portal, TextInput, Card, IconButton, PaperProvider ,Text} from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as React from 'react';
+import { Animated, GestureResponderEvent, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Card, PaperProvider } from 'react-native-paper';
 
-import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
-import { auth } from '../../FirebaseConfig'; // Adjust path if needed
-import { router ,Tabs } from 'expo-router';
-import { signOut } from 'firebase/auth';
-import BottomTabNavigation from '../components/BottomTabNavigation';
+import { memo, useCallback } from 'react';
 
 
 
-const StorePage = () => {
+const StorePage = memo(() => {
     function handleImagePick(e: GestureResponderEvent): void {
         throw new Error('Function not implemented.');
     }
 
-
- 
-
     const { width } = useWindowDimensions();
     
-
-    const getCardWidth = () => {
+    const getCardWidth = useCallback(() => {
         if (width < 400) {
             return '49%';
         }
@@ -31,27 +22,26 @@ const StorePage = () => {
             return '48%';
         } 
         return '33%';
-    }
+    }, [width]);
 
-    const PictureCard =({imageUri,text}: {imageUri: string,text: {title: string, subtitle: string}}) => {
+    const PictureCard = memo(({imageUri,text}: {imageUri: string,text: {title: string, subtitle: string}}) => {
         const scaleAnim = new Animated.Value(1);
 
+        const onCartPress = useCallback(() => {
+            Animated.sequence([
+                Animated.timing(scaleAnim, {
+                    toValue: 1.2,
+                    duration: 100,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(scaleAnim, {
+                    toValue: 1,
+                    duration: 100,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        }, [scaleAnim]);
 
-        const onCartPress = () => {
-        Animated.sequence([
-            Animated.timing(scaleAnim, {
-                toValue: 1.2,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-                toValue: 1,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-    };
         return (
             <Card style={[styles.picture_card, { width: getCardWidth() }]}>
                 <Card.Cover source={{ uri: imageUri }} />
@@ -64,7 +54,7 @@ const StorePage = () => {
                 
             </Card>
         );
-    }
+    });
 
   return (
     <PaperProvider>
@@ -82,7 +72,7 @@ const StorePage = () => {
 
     </PaperProvider>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

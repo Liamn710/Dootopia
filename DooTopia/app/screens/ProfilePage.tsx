@@ -1,28 +1,32 @@
+import { router } from 'expo-router';
 import { signOut } from 'firebase/auth';
 import * as React from 'react';
-import { StyleSheet, Touchable, TouchableOpacity, View } from 'react-native';
-import { Avatar, Text } from 'react-native-paper';
+import { memo, useCallback } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Avatar } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
-import { router } from 'expo-router';
 
-
-const AvatarComponent = () => (
+const AvatarComponent = memo(() => (
   <Avatar.Image size={64} source={require('../../assets/images/avatar.png')} />
-);
+));
 export { AvatarComponent };
 
-const ProfilePage = () => {
+const ProfilePage = memo(() => {
+  const handleAvatarPress = useCallback(() => {
+    router.push("/screens/StorePage");
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.avatarContainer}>
-        <TouchableOpacity onPress={() => router.push("/screens/StorePage")}>
+        <TouchableOpacity onPress={handleAvatarPress}>
           <AvatarComponent />
         </TouchableOpacity>
       </View>
 
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

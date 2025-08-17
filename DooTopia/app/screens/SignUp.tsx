@@ -1,17 +1,17 @@
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import React, { useState } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { auth } from '../../FirebaseConfig'; // Adjust path if needed
 
-export default function SignUpScreen() {
+const SignUpScreen = memo(() => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
 
-  function createUserInMongo(firebaseUserId: string) {
+  const createUserInMongo = useCallback((firebaseUserId: string) => {
     let userObject = {
       firebaseUserId: firebaseUserId,
       name: name,
@@ -20,7 +20,7 @@ export default function SignUpScreen() {
       createdAt: new Date().toISOString(),
     }
     axios.post('http://localhost:3000/users', userObject)
-  }
+  }, [name, email]);
 
   // function createTaskInMongo() {
   //   let taskObject = {
@@ -52,7 +52,7 @@ export default function SignUpScreen() {
   // }
 
 
-  const handleSignUp = async (): Promise<string | false> => {
+  const handleSignUp = useCallback(async (): Promise<string | false> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     console.log("User signed up:", userCredential.user);
@@ -64,7 +64,19 @@ export default function SignUpScreen() {
     Alert.alert("Error", error.message);
     return false; // Return false on error
   }
-};
+}, [email, password]);
+
+  const handleSignUpPress = useCallback(async () => {
+    const firebaseUserId = await handleSignUp();
+    if (firebaseUserId) {
+      await createUserInMongo(firebaseUserId);
+      router.replace("/screens/MainApp");
+    }
+  }, [handleSignUp, createUserInMongo, router]);
+
+  const handleGoBackPress = useCallback(() => {
+    router.push('./HomeScreen');
+  }, [router]);
 
   return (
     <View style={styles.container}>
@@ -94,25 +106,21 @@ export default function SignUpScreen() {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={async () => {
-          const firebaseUserId = await handleSignUp();
-          if (firebaseUserId) {
-          await createUserInMongo(firebaseUserId);
-          router.replace("/screens/MainApp");
-  }
-}}
+        onPress={handleSignUpPress}
       >
         <Text style={styles.buttonText}>Sign Up</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('./HomeScreen')} style={{ marginTop: 20 }}>
+      <TouchableOpacity onPress={handleGoBackPress} style={{ marginTop: 20 }}>
         <Text style={{ marginTop: 20, color: '#555' }}>Already have an account? Go back</Text>
       </TouchableOpacity>
     </View>
 
     
   );
-}
+});
+
+export default SignUpScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: '#D6ECF2' },

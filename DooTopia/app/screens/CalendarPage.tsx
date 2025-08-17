@@ -1,33 +1,33 @@
 import * as React from 'react';
+import { memo, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { Text } from 'react-native-paper';
-import {Calendar, CalendarList, Agenda} from 'react-native-calendars';
-import { useState } from 'react';
 
-
-const CalendarPage = () => {
+const CalendarPage = memo(() => {
   const [selectedDate, setSelectedDate] = useState('');
 
+  const handleDayPress = useCallback((day: any) => {
+    setSelectedDate(day.dateString);
+  }, []);
 
-
+  const markedDates = React.useMemo(() => ({
+    [selectedDate]: { selected: true, selectedColor: 'blue' }
+  }), [selectedDate]);
 
   return (
     <View style={styles.container}>
       <Text variant="headlineMedium">Calendar Page</Text>
       <Calendar
-        onDayPress={(day) => {
-          setSelectedDate(day.dateString);
-        }}
-        markedDates={{
-          [selectedDate]: { selected: true, selectedColor: 'blue' }
-        }}
+        onDayPress={handleDayPress}
+        markedDates={markedDates}
       />
       {selectedDate ? (
         <Text>Selected date: {selectedDate}</Text>
       ) : null}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

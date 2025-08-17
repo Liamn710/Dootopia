@@ -1,20 +1,19 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
-import React from 'react';
+import React, { memo, useCallback } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { Divider, IconButton, Text } from 'react-native-paper';
+import { auth } from '../../FirebaseConfig';
 import CustomCheckbox from '../components/CustomCheckbox';
 import TasksAddBar, { Subtask, Task } from '../components/TasksAddBar';
-import { auth } from '../../FirebaseConfig';
-import axios from 'axios';
 
-const TasksPage = () => {
+const TasksPage = memo(() => {
   const [tasks, setTasks] = React.useState<{ [id: string]: Task }>({});
   const [isLoading, setIsLoading] = React.useState(true);
   const tasksArray = Object.values(tasks);
     const userId = auth.currentUser?.uid;
 
 
-  const addTask = (taskText: string) => {
+  const addTask = useCallback((taskText: string) => {
       const newTask: Task = {
       id: Date.now().toString(),
       text: taskText,
@@ -29,10 +28,10 @@ const TasksPage = () => {
       ...prevTasks,
       [newTask.id]: newTask
     }));
-  };
+  }, [userId]);
 
 
-  const addSubtask = (taskId: string) => { 
+  const addSubtask = useCallback((taskId: string) => { 
     const newSubtask: Subtask = {
       id: Date.now().toString(),
       text: 'New Subtask',
@@ -52,10 +51,10 @@ const TasksPage = () => {
       }
       return prevTasks;
     });
-   };
+   }, []);
 
 
-  const toggleTask = (taskId: string) => { 
+  const toggleTask = useCallback((taskId: string) => { 
     setTasks(prevTasks => {
       const task = prevTasks[taskId];
       if (task) {
@@ -69,10 +68,10 @@ const TasksPage = () => {
       }
       return prevTasks;
     });
-   };
+   }, []);
 
 
-  const toggleSubtask = (taskId: string, subtaskId: string) => {
+  const toggleSubtask = useCallback((taskId: string, subtaskId: string) => {
     setTasks(prevTasks => {
       const task = prevTasks[taskId];
       if (task) {
@@ -89,9 +88,9 @@ const TasksPage = () => {
       }
       return prevTasks;
     });
-  };
+  }, []);
 
-  const toggleExpansion = (taskId: string) => {
+  const toggleExpansion = useCallback((taskId: string) => {
     setTasks(prevTasks => {
       const task = prevTasks[taskId];
       if (task) {
@@ -105,16 +104,16 @@ const TasksPage = () => {
       }
       return prevTasks;
     });
-  };
+  }, []);
 
-  const deleteTask = (taskId: string) => {
+  const deleteTask = useCallback((taskId: string) => {
     setTasks(prevTasks => {
       const { [taskId]: deletedTask, ...remainingTasks } = prevTasks;
       return remainingTasks;
     });
-  };
+  }, []);
 
-  const deleteSubtask = (taskId: string, subtaskId: string) => {
+  const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
     setTasks(prevTasks => {
       const task = prevTasks[taskId];
       if (task) {
@@ -129,10 +128,10 @@ const TasksPage = () => {
       }
       return prevTasks;
     });
-  };
+  }, []);
 
   // 4. Render Functions
-  const renderTask = ({ item }: { item: Task }) => (
+  const renderTask = useCallback(({ item }: { item: Task }) => (
     <View style={styles.taskCard}>
       <View style={styles.taskContent}>
         <CustomCheckbox
@@ -155,7 +154,7 @@ const TasksPage = () => {
       </View>
       <Divider />
     </View>
-  );
+  ), [toggleTask, deleteTask]);
 
 
   return (
@@ -177,7 +176,9 @@ const TasksPage = () => {
       <TasksAddBar onAddTask={addTask} />
     </KeyboardAvoidingView>
   );
-};
+});
+
+export default TasksPage;
 
 const styles = StyleSheet.create({
   container: {
@@ -214,5 +215,3 @@ const styles = StyleSheet.create({
     margin: 0,
   },
 });
-
-export default TasksPage;

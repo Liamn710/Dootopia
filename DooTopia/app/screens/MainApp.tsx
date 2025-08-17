@@ -1,14 +1,14 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { memo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import BottomTabNavigation from '../components/BottomTabNavigation';
 
-const MainApp = () => {
+const MainApp = memo(() => {
   return (
     <View style={styles.container}>
       <BottomTabNavigation />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

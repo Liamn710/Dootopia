@@ -1,11 +1,11 @@
 
+import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
-import { StyleSheet, View, ScrollView} from 'react-native';
-import { Button, Dialog, Portal, TextInput, Card, IconButton, PaperProvider } from 'react-native-paper';
+import { memo, useCallback } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Button, Dialog, PaperProvider, Portal, TextInput } from 'react-native-paper';
 import FavButton from '../components/FavButton';
 import { PrizeCard } from '../components/PrizeCard';
-import * as ImagePicker from 'expo-image-picker';
-import { MaterialIcons } from '@expo/vector-icons';
 
 
 
@@ -20,7 +20,7 @@ export interface Prize {
 }
 
 
-const PrizesPage = () => {
+const PrizesPage = memo(() => {
   const [visible, setVisible] = React.useState(false);
   const [prizes, setPrizes] = React.useState<Prize[]>([]);
   const [newPrize, setNewPrize] = React.useState<Prize>({
@@ -31,7 +31,8 @@ const PrizesPage = () => {
     isCompleted: false,
     pointsRequired: 0,
   });
-  const pickImage = async () => {
+  
+  const pickImage = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -42,16 +43,16 @@ const PrizesPage = () => {
     if (!result.canceled) {
       setNewPrize(prev => ({ ...prev, imageUrl: result.assets[0].uri }));
     }
-  };
+  }, []);
 
-  const addNewCard = () => {
+  const addNewCard = useCallback(() => {
      if (newPrize.title.trim() && newPrize.content.trim()) {
       const prizeToAdd: Prize = {
         ...newPrize,
         id: Date.now().toString(),
       };
       
-      setPrizes([...prizes, prizeToAdd]);
+      setPrizes(prev => [...prev, prizeToAdd]);
       
       setNewPrize({
         id: '',
@@ -63,19 +64,19 @@ const PrizesPage = () => {
       });
       setVisible(false);
      }
-  };
+  }, [newPrize]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     console.log('Cancel pressed');
-  };
+  }, []);
 
-  const handleOk = () => {
+  const handleOk = useCallback(() => {
     console.log('Ok pressed');
-  };
+  }, []);
 
-  const handleCardPress = () => {
+  const handleCardPress = useCallback(() => {
     console.log('Card pressed');
-  };
+  }, []);
 
  return (
   <PaperProvider>
@@ -126,7 +127,9 @@ const PrizesPage = () => {
     </View>
   </PaperProvider>
   );
-};
+});
+
+export default PrizesPage;
 
 const styles = StyleSheet.create({
   container: {
@@ -134,4 +137,3 @@ const styles = StyleSheet.create({
     padding: 16,
   },
 });
-export default PrizesPage;
