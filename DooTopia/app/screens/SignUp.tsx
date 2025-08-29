@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { auth } from '../../FirebaseConfig'; // Adjust path if needed
+import {createUser} from '../../backend/api'
 
 export default function SignUpScreen() {
   const [name, setName] = useState('');
@@ -19,37 +20,9 @@ export default function SignUpScreen() {
       points: 0,
       createdAt: new Date().toISOString(),
     }
-    axios.post('http://localhost:3000/users', userObject)
+    createUser(userObject);
   }
 
-  // function createTaskInMongo() {
-  //   let taskObject = {
-  //     title: "Welcome Task",
-  //     text: "Complete your profile",
-  //     completed: false,
-  //     createdAt: new Date().toISOString(),
-  //     points: 10,
-  //     userId: "sdnfkjnsd"
-  //   }
-  //   axios.post('http://localhost:3000/tasks', taskObject)
-  // }
-  // async function createNewTaskInMongo() {
-  //   let taskObject = {
-  //     title: "Welcome Task11111",
-  //     text: "Complete your profile",
-  //     completed: false,
-  //     createdAt: new Date().toISOString(),
-  //     points: 101,
-  //     userId: "sdnfkjnsd" // Replace with actual user ID
-  //   };
-
-  //   try {
-  //     await createTask(taskObject);
-  //     console.log("Task created successfully");
-  //   } catch (error) {
-  //     console.error("Error creating task:", error);
-  //   }
-  // }
 
 
   const handleSignUp = async (): Promise<string | false> => {

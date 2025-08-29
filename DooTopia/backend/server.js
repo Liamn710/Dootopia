@@ -3,6 +3,9 @@ const express = require("express");
 const cors = require("cors");
 const users = require("./userRoutes");
 const tasks = require("./taskRoutes");
+const lists = require("./listRoutes");
+const rewards = require("./rewardRoutes");
+const subtasks = require("./subtaskRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,6 +14,9 @@ app.use(cors());
 app.use(express.json());
 app.use(users);
 app.use(tasks);
+app.use(lists);
+app.use(rewards);
+app.use(subtasks);
 
 app.listen(PORT, () => {
     connect.connectToServer()
