@@ -1,8 +1,9 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import * as React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View, Button, StyleSheet } from 'react-native';
 import { IconButton, TextInput} from 'react-native-paper';
 import FavButton from './FavButton';
+import { useState } from 'react';
 
 
 export interface Subtask {
@@ -12,54 +13,63 @@ export interface Subtask {
 }
 
 export interface Task {
-  id: string;           // Unique identifier
-  text: string;         // Task content
-  completed: boolean;   // Completion status
-  subtasks: Subtask[];  // Array of subtasks
-  expanded: boolean;  
-  points: number;       // Points associated with the task
-  userId: string;      // ID of the user who created the task
+  id: string;
+  title: string;
+  text: string;
+  points: number;
+  completed: boolean;
+  subtasks: Subtask[];
+  expanded: boolean;
 }
 
 
-export interface TasksAddBarProps {
-    onAddTask: (taskText: string) => void; // Function to handle adding a new task
-    }
+interface TasksAddBarProps {
+  onAddTask: (title: string, text: string, points: number) => void;
+}
 
-const TasksAddBar = ({onAddTask} : TasksAddBarProps) => {
-    const [taskText , setTaskText] = React.useState<string>(''); // State for task input
+const TasksAddBar: React.FC<TasksAddBarProps> = ({ onAddTask }) => {
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
+  const [points, setPoints] = useState('');
 
-    const handleAddTask = () => {
-        if (taskText.trim()) {
-            onAddTask(taskText.trim()); // Call the function to add the task
-            setTaskText(''); // Clear the input field
-        }
-    };
-    
-    return (
-        <View style={styles.container}>
-            <TextInput
-                label="Add a new task"
-                value={taskText}
-                onChangeText={setTaskText}
-                style={styles.input}
-                mode="outlined"
-                autoCapitalize="sentences"
-                returnKeyType="done"
-                onSubmitEditing={handleAddTask}
-                blurOnSubmit={false}
-            />
-            <IconButton
-                icon={() => <AntDesign name="plus" size={24} color="#666" />}
-                size={24}
-                onPress={handleAddTask}
-                style={styles.button}
-            />
-        </View>
-    );
+  return (
+    <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        placeholder="Task Title"
+        value={title}
+        onChangeText={setTitle}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Task Description"
+        value={text}
+        onChangeText={setText}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Points"
+        value={points}
+        onChangeText={setPoints}
+        keyboardType="numeric"
+      />
+      <Button
+        title="Add Task"
+        onPress={() => {
+          if (title && text && points) {
+            onAddTask(title, text, parseInt(points, 10));
+            setTitle('');
+            setText('');
+            setPoints('');
+          }
+        }}
+      />
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
+    
     container: {
         flexDirection: 'row',
         alignItems: 'center',
