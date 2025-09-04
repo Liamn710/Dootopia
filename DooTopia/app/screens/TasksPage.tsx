@@ -5,7 +5,8 @@ import { Divider, IconButton, Text } from 'react-native-paper';
 import CustomCheckbox from '../components/CustomCheckbox';
 import TasksAddBar, { Subtask, Task } from '../components/TasksAddBar';
 import { auth } from '../../FirebaseConfig';
-import axios from 'axios';
+import {createTask} from '../../backend/api'
+
 
 const TasksPage = () => {
   const [tasks, setTasks] = React.useState<{ [id: string]: Task }>({});
@@ -14,20 +15,31 @@ const TasksPage = () => {
     const userId = auth.currentUser?.uid;
 
 
-  const addTask = (taskText: string) => {
+  const addTask = (taskTitle: string, taskText: string, taskPoints: number) => {
       const newTask: Task = {
+      title: taskTitle,
+      points: taskPoints,
       id: Date.now().toString(),
       text: taskText,
       completed:false,
       subtasks: [],
       expanded: false,
-    };
+    }
+    let taskObject = {
+      title: newTask.title,
+      text: newTask.text,
+      completed: newTask.completed,
+      createdAt: new Date().toISOString(),
+      points: newTask.points,
+      userId: userId
+    }
+    createTask(taskObject);
 
     setTasks(prevTasks => ({
-      ...prevTasks,
-      [newTask.id]: newTask
-    }));
-  };
+    ...prevTasks,
+    [newTask.id]: newTask
+  }));
+};
 
 
   const addSubtask = (taskId: string) => { 
@@ -131,29 +143,36 @@ const TasksPage = () => {
 
   // 4. Render Functions
   const renderTask = ({ item }: { item: Task }) => (
-    <View style={styles.taskCard}>
-      <View style={styles.taskContent}>
-        <CustomCheckbox
-          status ={item.completed ? 'checked' : 'unchecked'}
-          onPress={() => toggleTask(item.id)}
-        />
+  <View style={styles.taskCard}>
+    <View style={styles.taskContent}>
+      <CustomCheckbox
+        status={item.completed ? 'checked' : 'unchecked'}
+        onPress={() => toggleTask(item.id)}
+      />
+      <View style={{ flex: 1 }}>
+        <Text variant="titleMedium" style={styles.taskTitle}>
+          {item.title}
+        </Text>
         <Text
           variant="bodyLarge"
           style={[styles.taskText, item.completed && styles.completedTask]}
-          
         >
           {item.text}
         </Text>
-        <IconButton
-          icon={() => <AntDesign name="close" size={20} color="#666" />}
-          size={20}
-          onPress={() => deleteTask(item.id)}
-          style={styles.deleteButton}
-        />
       </View>
-      <Divider />
+      <Text style={styles.pointsText}>
+        {item.points ?? 0} pts
+      </Text>
+      <IconButton
+        icon={() => <AntDesign name="close" size={20} color="#666" />}
+        size={20}
+        onPress={() => deleteTask(item.id)}
+        style={styles.deleteButton}
+      />
     </View>
-  );
+    <Divider />
+  </View>
+);
 
 
   return (
@@ -182,6 +201,17 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '',
+  },
+  taskTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  pointsText: {
+    marginLeft: 8,
+    color: '#5A8A93',
+    fontWeight: '600',
+    alignSelf: 'center',
   },
   title: {
     textAlign: 'center',
