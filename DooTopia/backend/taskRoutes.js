@@ -25,7 +25,7 @@ taskRoutes.route("/tasks/:id").get(async(request,response) => {
     }
 })
 //create a new task
-taskRoutes.route("/tasks").post(async(request,response) => {
+taskRoutes.route("/tasks").post(async (request, response) => {
     let db = database.getdb();
     let mongoObject = { 
         title: request.body.title,
@@ -34,25 +34,28 @@ taskRoutes.route("/tasks").post(async(request,response) => {
         createdAt: request.body.createdAt,
         points: request.body.points,
         userId: request.body.userId
-    }
+    };
     let data = await db.collection("tasks").insertOne(mongoObject);
-    response.status(201).json({message: "Task created successfully", taskId: data.insertedId});
-    });
+
+    // Fetch the inserted document using its _id
+    const insertedTask = await db.collection("tasks").findOne({ _id: data.insertedId });
+
+    response.status(201).json(insertedTask);
+});
 //update task by id
-taskRoutes.route("/tasks/:id").put(async(request,response) => {
+taskRoutes.route("/tasks/:id").put(async (request, response) => {
     let db = database.getdb();
-    let mongoObject = { 
-        $set: {
-            title: request.body.title,
-            text: request.body.text,
-            completed: request.body.completed,
-            points: request.body.points,
-            userId: request.body.userId
-        }
+    let id = request.params.id;
+    let updateObject = { $set: request.body };
+
+    // If your tasks use string IDs:
+    let result = await db.collection("tasks").updateOne({ _id: new ObjectId(id) }, updateObject);
+    if (result.modifiedCount > 0) {
+        response.status(200).json({ message: "Task updated successfully" });
+    } else {
+        response.status(404).json({ error: "Task not found or not updated" });
     }
-    let data = await db.collection("tasks").updateOne({_id: new ObjectId(request.params.id)}, mongoObject);
-    response.status(200).json({message: "Task updated successfully", taskId: data.insertedId});
-    });
+});
 
 //delete task by id
 taskRoutes.route("/tasks/:id").delete(async(request,response) => {

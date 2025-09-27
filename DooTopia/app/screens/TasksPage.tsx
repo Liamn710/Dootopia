@@ -6,35 +6,56 @@ import CustomCheckbox from '../components/CustomCheckbox';
 import TasksAddBar, { Subtask, Task } from '../components/TasksAddBar';
 import { auth } from '../../FirebaseConfig';
 import {createTask} from '../../backend/api'
+import { getMongoUserByFirebaseId } from '../../backend/api'; // Add this import
+import { updateTask } from '../../backend/api'; // Make sure this import exists
+
 
 
 const TasksPage = () => {
   const [tasks, setTasks] = React.useState<{ [id: string]: Task }>({});
   const [isLoading, setIsLoading] = React.useState(true);
+  const [mongoUserId, setMongoUserId] = React.useState<string>('');
   const tasksArray = Object.values(tasks);
-    const userId = auth.currentUser?.uid;
+  const userId = auth.currentUser?.uid;
 
+ React.useEffect(() => {
+    const fetchMongoUser = async () => {
+      if (userId) {
+        try {
+          const mongoUser = await getMongoUserByFirebaseId(userId);
+          setMongoUserId(mongoUser._id);
+          console.log('Fetched MongoDB user:', mongoUserId);
+        } catch (error) {
+          console.error('Error fetching MongoDB user:', error);
+        }
+      }
+    };
+    fetchMongoUser();
+  }, [userId]);
 
-  const addTask = (taskTitle: string, taskText: string, taskPoints: number) => {
-      const newTask: Task = {
-      title: taskTitle,
-      points: taskPoints,
-      id: Date.now().toString(),
-      text: taskText,
-      completed:false,
-      subtasks: [],
-      expanded: false,
-    }
-    let taskObject = {
-      title: newTask.title,
-      text: newTask.text,
-      completed: newTask.completed,
-      createdAt: new Date().toISOString(),
-      points: newTask.points,
-      userId: userId
-    }
-    createTask(taskObject);
+const addTask = async (taskTitle: string, taskText: string, taskPoints: number) => {
+  let taskObject = {
+    title: taskTitle,
+    text: taskText,
+    completed: false,
+    createdAt: new Date().toISOString(),
+    points: taskPoints,
+    userId: mongoUserId
+  };
 
+  // Await the backend response to get the MongoDB _id
+  const result = await createTask(taskObject);
+
+  // Use the MongoDB _id as the task id in your UI
+  const newTask: Task = {
+    title: taskTitle,
+    points: taskPoints,
+    id: result._id, // Use MongoDB _id here
+    text: taskText,
+    completed: false,
+    subtasks: [],
+    expanded: false,
+};
     setTasks(prevTasks => ({
     ...prevTasks,
     [newTask.id]: newTask
@@ -65,21 +86,28 @@ const TasksPage = () => {
    };
 
 
-  const toggleTask = (taskId: string) => { 
-    setTasks(prevTasks => {
-      const task = prevTasks[taskId];
-      if (task) {
-        return {
-          ...prevTasks,
-          [taskId]: {
-            ...task,
-            completed: !task.completed,
-          },
-        };
+  const toggleTask = async (taskId: string) => { 
+  setTasks(prevTasks => {
+    const task = prevTasks[taskId];
+    if (task && taskId) {
+      const updatedTask = {
+        ...task,
+        completed: !task.completed,
+      };
+
+      // Only update in backend if taskId is defined
+      if (taskId) {
+        updateTask(taskId, { completed: updatedTask.completed });
       }
-      return prevTasks;
-    });
-   };
+
+      return {
+        ...prevTasks,
+        [taskId]: updatedTask,
+      };
+    }
+    return prevTasks;
+  });
+};
 
 
   const toggleSubtask = (taskId: string, subtaskId: string) => {

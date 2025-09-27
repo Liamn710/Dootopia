@@ -38,6 +38,17 @@ userRoutes.route("/users").post(async(request,response) => {
     let data = await db.collection("users").insertOne(mongoObject);
     response.status(201).json({message: "User created successfully", userId: data.insertedId});
     });
+
+    // get user by firebaseUserId
+userRoutes.route("/users/firebase/:firebaseUserId").get(async (request, response) => {
+    let db = database.getdb();
+    let data = await db.collection("users").findOne({ firebaseUserId: request.params.firebaseUserId });
+    if (data) {
+        response.status(200).json(data);
+    } else {
+        response.status(404).json({ error: "User not found" });
+    }
+});
 //update user by id
 userRoutes.route("/users/:id").put(async(request,response) => {
     let db = database.getdb();
