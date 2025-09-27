@@ -18,7 +18,7 @@ app.use(lists);
 app.use(rewards);
 app.use(subtasks);
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     connect.connectToServer()
     console.log(`Server is running on port ${PORT}`);
 })
