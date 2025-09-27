@@ -13,6 +13,7 @@ userRoutes.route("/users").get(async(request,response) => {
     else {
         response.status(404).json({error: "No users found"});
     }
+
 })
 //get user by id
 userRoutes.route("/users/:id").get(async(request,response) => {

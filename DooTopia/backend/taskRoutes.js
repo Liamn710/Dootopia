@@ -3,10 +3,10 @@ const database = require('./connect');
 const { ObjectId } = require('mongodb');
 
 let taskRoutes = express.Router();
-// get all tasks
+// get tasks by firebase user id
 taskRoutes.route("/tasks").get(async(request,response) => {
     let db = database.getdb();
-    let data = await db.collection("tasks").find({}).toArray();
+    let data = await db.collection("tasks").find({userId: request.query.userId}).toArray();
     if (data.length > 0){
         response.status(200).json(data);
     }
@@ -14,6 +14,8 @@ taskRoutes.route("/tasks").get(async(request,response) => {
         response.status(404).json({error: "No tasks found"});
     }
 })
+
+// get task by id by collection or list
 taskRoutes.route("/tasks/:id").get(async(request,response) => {
     let db = database.getdb();
     let data = await db.collection("tasks").findOne({_id: new ObjectId(request.params.id)});
@@ -24,6 +26,7 @@ taskRoutes.route("/tasks/:id").get(async(request,response) => {
         response.status(404).json({error: "Task not found"});
     }
 })
+
 //create a new task
 taskRoutes.route("/tasks").post(async(request,response) => {
     let db = database.getdb();

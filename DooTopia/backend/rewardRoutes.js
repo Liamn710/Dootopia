@@ -4,6 +4,8 @@ const { ObjectId } = require('mongodb');
 
 let rewardRoutes = express.Router();
 
+
+// Get all rewards
 rewardRoutes.route("/rewards").get(async (request, response) => {
     let db = database.getdb();
     let data = await db.collection("rewards").find({}).toArray();
@@ -14,6 +16,7 @@ rewardRoutes.route("/rewards").get(async (request, response) => {
     }
 });
 
+// Get a specific reward by ID
 rewardRoutes.route("/rewards/:id").get(async (request, response) => {
     let db = database.getdb();
     let data = await db.collection("rewards").findOne({ _id: ObjectId(request.params.id) });
@@ -24,6 +27,7 @@ rewardRoutes.route("/rewards/:id").get(async (request, response) => {
     }
 });
 
+// Create a new reward
 rewardRoutes.route("/rewards").post(async (request, response) => {
     let db = database.getdb();
     let newReward = {
@@ -36,6 +40,7 @@ rewardRoutes.route("/rewards").post(async (request, response) => {
     response.status(201).json(result.ops[0]);
 });
 
+// Update a reward by ID
 rewardRoutes.route("/rewards/:id").put(async (request, response) => {
     let db = database.getdb();
     let updatedReward = {
@@ -51,6 +56,7 @@ rewardRoutes.route("/rewards/:id").put(async (request, response) => {
     }
 });
 
+// Delete a reward by ID
 rewardRoutes.route("/rewards/:id").delete(async (request, response) => {
     let db = database.getdb();
     let result = await db.collection("rewards").deleteOne({ _id: ObjectId(request.params.id) });

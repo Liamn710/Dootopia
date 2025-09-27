@@ -4,6 +4,7 @@ const { ObjectId } = require('mongodb');
 
 let listRoutes = express.Router();
 
+// Get all lists
 listRoutes.route("/lists").get(async (request, response) => {
     let db = database.getdb();
         let data = await db.collection("lists").find({}).toArray();
@@ -15,6 +16,7 @@ listRoutes.route("/lists").get(async (request, response) => {
         }
     })
 
+// Get a specific list by ID
 listRoutes.route("/lists/:id").get(async (request, response) => {
     let db = database.getdb();
     let data = await db.collection("lists").findOne({ _id: ObjectId(request.params.id) });
@@ -26,6 +28,8 @@ listRoutes.route("/lists/:id").get(async (request, response) => {
     }
 });
 
+
+// Create a new list
 listRoutes.route("/lists").post(async (request, response) => {
     let db = database.getdb();
     let newList = {
@@ -35,6 +39,8 @@ listRoutes.route("/lists").post(async (request, response) => {
     response.status(201).json(result.ops[0]);
 });
 
+
+// Update a list by ID
 listRoutes.route("/lists/:id").put(async (request, response) => {
     let db = database.getdb();
     let updatedList = {
@@ -48,6 +54,7 @@ listRoutes.route("/lists/:id").put(async (request, response) => {
     }
 });
 
+// Delete a list by ID
 listRoutes.route("/lists/:id").delete(async (request, response) => {
     let db = database.getdb();
     let result = await db.collection("lists").deleteOne({ _id: ObjectId(request.params.id) });

@@ -1,10 +1,9 @@
-import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import React, { memo, useCallback, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { auth } from '../../FirebaseConfig'; // Adjust path if needed
-import {createUser} from '../../backend/api'
+import { createUser } from '../../backend/api';
 
 const SignUpScreen = memo(() => {
   const [name, setName] = useState('');
@@ -21,7 +20,7 @@ const SignUpScreen = memo(() => {
       createdAt: new Date().toISOString(),
     }
     createUser(userObject);
-  }
+  }, [name, email]);
 
 
 

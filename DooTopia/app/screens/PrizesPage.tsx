@@ -6,6 +6,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Dialog, PaperProvider, Portal, TextInput } from 'react-native-paper';
 import FavButton from '../components/FavButton';
 import { PrizeCard } from '../components/PrizeCard';
+import CardContent from 'react-native-paper/lib/typescript/components/Card/CardContent';
 
 
 
@@ -136,4 +137,11 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+
+  prizeCard: {
+    marginBottom: 16,
+    width: '100%',
+  },
 });
+
+

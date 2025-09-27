@@ -58,8 +58,8 @@ export async function deleteUser(id) {
 
 // task API***************************************************************************
 
-export async function getTasks() {
-    const response = await axios.get(`${API_URL}/tasks`);
+export async function getTasks(userId) {
+    const response = await axios.get(`${API_URL}/tasks?userId=${userId}`);
     if (response.status === 200) {
         return response.data;
     }

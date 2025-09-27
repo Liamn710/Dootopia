@@ -5,41 +5,79 @@ import { Divider, IconButton, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import CustomCheckbox from '../components/CustomCheckbox';
 import TasksAddBar, { Subtask, Task } from '../components/TasksAddBar';
-import { auth } from '../../FirebaseConfig';
-import {createTask} from '../../backend/api'
+import { createTask, getTasks, updateTask, deleteTask as deleteTaskAPI } from '../../backend/api';
+import { set } from 'lodash';
 
 
 const TasksPage = memo(() => {
   const [tasks, setTasks] = React.useState<{ [id: string]: Task }>({});
   const [isLoading, setIsLoading] = React.useState(true);
   const tasksArray = Object.values(tasks);
-    const userId = auth.currentUser?.uid;
+  const userId = auth.currentUser?.uid;
+
+ 
+const fetchTasks = useCallback(async () => {
+    if (!userId) return;
 
 
-  const addTask = (taskTitle: string, taskText: string, taskPoints: number) => {
+    setIsLoading(true);
+    try {
+      const fetchedTasks = await getTasks(userId);
+      if(!fetchedTasks.error){
+        const taskMap: { [id: string]: Task } = {};
+        fetchedTasks.forEach((task: any) => {
+          taskMap[task.id] = {
+            id: task.id,
+            title: task.title,
+            text: task.text,
+            points: task.points,
+            completed: task.completed,
+            subtasks: task.subtasks || [],
+            expanded: false,
+          };
+        });
+        setTasks(taskMap);
+      }
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
+
+  // Fetch Tasks on Mount
+  const addTask = async (taskTitle: string, taskText: string, taskPoints: number) => {
+  const taskObject = {
+    title: taskTitle,
+    text: taskText,
+    completed: false,
+    createdAt: new Date().toISOString(),
+    points: taskPoints,
+    userId: userId
+  };
+
+  try {
+    const result = await createTask(taskObject);
+    if (!result.error && result.taskId) {
+      // Add the task to local state with the MongoDB _id
       const newTask: Task = {
-      title: taskTitle,
-      points: taskPoints,
-      id: Date.now().toString(),
-      text: taskText,
-      completed:false,
-      subtasks: [],
-      expanded: false,
-    }
-    let taskObject = {
-      title: newTask.title,
-      text: newTask.text,
-      completed: newTask.completed,
-      createdAt: new Date().toISOString(),
-      points: newTask.points,
-      userId: userId
-    }
-    createTask(taskObject);
+        id: result.taskId,
+        title: taskTitle,
+        text: taskText,
+        points: taskPoints,
+        completed: false,
+        subtasks: [],
+        expanded: false,
+      };
 
-    setTasks(prevTasks => ({
-    ...prevTasks,
-    [newTask.id]: newTask
-  }));
+      setTasks(prevTasks => ({
+        ...prevTasks,
+        [result.taskId]: newTask
+      }));
+    }
+  } catch (error) {
+    console.error('Error creating task:', error);
+  }
 };
 
 
@@ -66,21 +104,29 @@ const TasksPage = memo(() => {
    }, []);
 
 
-  const toggleTask = useCallback((taskId: string) => { 
-    setTasks(prevTasks => {
-      const task = prevTasks[taskId];
-      if (task) {
-        return {
-          ...prevTasks,
-          [taskId]: {
-            ...task,
-            completed: !task.completed,
-          },
-        };
-      }
-      return prevTasks;
-    });
-   }, []);
+  const toggleTask = useCallback(async (taskId: string) => {
+  const task = tasks[taskId];
+  if (!task) return;
+
+  const updatedTask = {
+    ...task,
+    completed: !task.completed,
+    userId: userId
+  };
+
+  try {
+    await updateTask(taskId, updatedTask);
+    setTasks(prevTasks => ({
+      ...prevTasks,
+      [taskId]: {
+        ...prevTasks[taskId],
+        completed: !prevTasks[taskId].completed,
+      },
+    }));
+  } catch (error) {
+    console.error('Error updating task:', error);
+  }
+}, [tasks, userId]);
 
 
   const toggleSubtask = useCallback((taskId: string, subtaskId: string) => {
@@ -118,12 +164,17 @@ const TasksPage = memo(() => {
     });
   }, []);
 
-  const deleteTask = useCallback((taskId: string) => {
+  const deleteTask = useCallback(async (taskId: string) => {
+  try {
+    await deleteTaskAPI(taskId);
     setTasks(prevTasks => {
       const { [taskId]: deletedTask, ...remainingTasks } = prevTasks;
       return remainingTasks;
     });
-  }, []);
+  } catch (error) {
+    console.error('Error deleting task:', error);
+  }
+}, []);
 
   const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
     setTasks(prevTasks => {
