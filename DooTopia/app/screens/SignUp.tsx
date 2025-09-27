@@ -11,16 +11,22 @@ const SignUpScreen = memo(() => {
   const [password, setPassword] = useState('');
   const router = useRouter();
 
-  const createUserInMongo = useCallback((firebaseUserId: string) => {
-    let userObject = {
+  async function createUserInMongo(firebaseUserId: string) {
+  try {
+    const userObject = {
       firebaseUserId: firebaseUserId,
       name: name,
       email: email,
       points: 0,
       createdAt: new Date().toISOString(),
     }
-    createUser(userObject);
-  }, [name, email]);
+    await createUser(userObject);
+    console.log("User created in MongoDB:", userObject);
+  } catch (error) {
+    console.error("Error creating user in MongoDB:", error);
+    Alert.alert("Error", "Failed to create user profile");
+  }
+}
 
 
 

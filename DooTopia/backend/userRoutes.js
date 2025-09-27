@@ -30,6 +30,7 @@ userRoutes.route("/users/:id").get(async(request,response) => {
 userRoutes.route("/users").post(async(request,response) => {
     let db = database.getdb();
     let mongoObject = { 
+        firebaseUserId: request.body.firebaseUserId,
         name: request.body.name,
         email: request.body.email,
         points: request.body.points,
