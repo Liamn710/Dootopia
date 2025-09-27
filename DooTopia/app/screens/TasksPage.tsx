@@ -1,30 +1,44 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
-import React from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
-import { Divider, IconButton, Text } from 'react-native-paper';
+import React, { useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View, Modal, TouchableOpacity, TextInput } from 'react-native';
+import { Divider, IconButton, Text, Button } from 'react-native-paper';
 import CustomCheckbox from '../components/CustomCheckbox';
-import TasksAddBar, { Subtask, Task } from '../components/TasksAddBar';
 import { auth } from '../../FirebaseConfig';
-import {createTask} from '../../backend/api'
-import { getMongoUserByFirebaseId } from '../../backend/api'; // Add this import
-import { updateTask } from '../../backend/api'; // Make sure this import exists
-import { updateUser } from '../../backend/api';
+import { createTask, getMongoUserByFirebaseId, updateTask, updateUser } from '../../backend/api';
 
+type Subtask = {
+  id: string;
+  text: string;
+  completed: boolean;
+};
+
+type Task = {
+  id: string;
+  title: string;
+  text: string;
+  points: number;
+  completed: boolean;
+  subtasks: Subtask[];
+  expanded: boolean;
+};
 
 const TasksPage = () => {
-  const [tasks, setTasks] = React.useState<{ [id: string]: Task }>({});
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [mongoUserId, setMongoUserId] = React.useState<string>('');
+  const [tasks, setTasks] = useState<{ [id: string]: Task }>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [mongoUserId, setMongoUserId] = useState<string>('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskText, setTaskText] = useState('');
+  const [taskPoints, setTaskPoints] = useState('');
   const tasksArray = Object.values(tasks);
   const userId = auth.currentUser?.uid;
 
- React.useEffect(() => {
+  React.useEffect(() => {
     const fetchMongoUser = async () => {
       if (userId) {
         try {
           const mongoUser = await getMongoUserByFirebaseId(userId);
           setMongoUserId(mongoUser._id);
-          console.log('Fetched MongoDB user:', mongoUser._id); // <-- logs correct value
         } catch (error) {
           console.error('Error fetching MongoDB user:', error);
         }
@@ -33,38 +47,40 @@ const TasksPage = () => {
     fetchMongoUser();
   }, [userId]);
 
-const addTask = async (taskTitle: string, taskText: string, taskPoints: number) => {
-  if (!mongoUserId) {
-    // Optionally show an error or prevent adding
-    console.warn("Mongo user ID not loaded yet!");
-    return;
-  }
-  let taskObject = {
-    title: taskTitle,
-    text: taskText,
-    completed: false,
-    createdAt: new Date().toISOString(),
-    points: taskPoints,
-    userId: mongoUserId
+  const addTask = async () => {
+    if (!mongoUserId) {
+      console.warn("Mongo user ID not loaded yet!");
+      return;
+    }
+    let taskObject = {
+      title: taskTitle,
+      text: taskText,
+      completed: false,
+      createdAt: new Date().toISOString(),
+      points: Number(taskPoints),
+      userId: mongoUserId
+    };
+
+    const result = await createTask(taskObject);
+
+    const newTask: Task = {
+      title: taskTitle,
+      points: Number(taskPoints),
+      id: result._id,
+      text: taskText,
+      completed: false,
+      subtasks: [],
+      expanded: false,
+    };
+    setTasks(prevTasks => ({
+      ...prevTasks,
+      [newTask.id]: newTask
+    }));
+    setModalVisible(false);
+    setTaskTitle('');
+    setTaskText('');
+    setTaskPoints('');
   };
-
-  const result = await createTask(taskObject);
-
-  const newTask: Task = {
-    title: taskTitle,
-    points: taskPoints,
-    id: result._id,
-    text: taskText,
-    completed: false,
-    subtasks: [],
-    expanded: false,
-  };
-  setTasks(prevTasks => ({
-    ...prevTasks,
-    [newTask.id]: newTask
-  }));
-};
-
 
   const addSubtask = (taskId: string) => { 
     const newSubtask: Subtask = {
@@ -178,36 +194,36 @@ const addTask = async (taskTitle: string, taskText: string, taskPoints: number) 
 
   // 4. Render Functions
   const renderTask = ({ item }: { item: Task }) => (
-  <View style={styles.taskCard}>
-    <View style={styles.taskContent}>
-      <CustomCheckbox
-        status={item.completed ? 'checked' : 'unchecked'}
-        onPress={() => toggleTask(item.id)}
-      />
-      <View style={{ flex: 1 }}>
-        <Text variant="titleMedium" style={styles.taskTitle}>
-          {item.title}
+    <View style={styles.taskCard}>
+      <View style={styles.taskContent}>
+        <CustomCheckbox
+          status={item.completed ? 'checked' : 'unchecked'}
+          onPress={() => toggleTask(item.id)}
+        />
+        <View style={{ flex: 1 }}>
+          <Text variant="titleMedium" style={styles.taskTitle}>
+            {item.title}
+          </Text>
+          <Text
+            variant="bodyLarge"
+            style={[styles.taskText, item.completed && styles.completedTask]}
+          >
+            {item.text}
+          </Text>
+        </View>
+        <Text style={styles.pointsText}>
+          {item.points ?? 0} pts
         </Text>
-        <Text
-          variant="bodyLarge"
-          style={[styles.taskText, item.completed && styles.completedTask]}
-        >
-          {item.text}
-        </Text>
+        <IconButton
+          icon={() => <AntDesign name="close" size={20} color="#666" />}
+          size={20}
+          onPress={() => deleteTask(item.id)}
+          style={styles.deleteButton}
+        />
       </View>
-      <Text style={styles.pointsText}>
-        {item.points ?? 0} pts
-      </Text>
-      <IconButton
-        icon={() => <AntDesign name="close" size={20} color="#666" />}
-        size={20}
-        onPress={() => deleteTask(item.id)}
-        style={styles.deleteButton}
-      />
+      <Divider />
     </View>
-    <Divider />
-  </View>
-);
+  );
 
 
   return (
@@ -224,9 +240,59 @@ const addTask = async (taskTitle: string, taskText: string, taskPoints: number) 
         renderItem={renderTask}
         style={styles.tasksList}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps= "handled"
+        keyboardShouldPersistTaps="handled"
       />
-      <TasksAddBar onAddTask={addTask} />
+
+      {/* Add Task Button */}
+      <Button
+        mode="contained"
+        style={styles.addTaskButton}
+        onPress={() => setModalVisible(true)}
+        icon="plus"
+      >
+        Add Task
+      </Button>
+
+      {/* Modal for adding a task */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Add New Task</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Task Title"
+              value={taskTitle}
+              onChangeText={setTaskTitle}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Task Description"
+              value={taskText}
+              onChangeText={setTaskText}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Points"
+              value={taskPoints}
+              onChangeText={setTaskPoints}
+              keyboardType="numeric"
+            />
+            <View style={styles.modalButtons}>
+              <Button mode="contained" onPress={addTask} disabled={!taskTitle || !taskPoints}>
+                Add
+              </Button>
+              <Button mode="outlined" onPress={() => setModalVisible(false)} style={{ marginLeft: 10 }}>
+                Cancel
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -235,7 +301,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '',
+    backgroundColor: '#D6ECF2',
   },
   taskTitle: {
     fontWeight: 'bold',
@@ -258,7 +324,14 @@ const styles = StyleSheet.create({
   },
   taskCard: {
     marginBottom: 8,
-    elevation: 50,
+    elevation: 2,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 8,
+    shadowColor: "#5A8A93",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   taskContent: {
     flexDirection: 'row',
@@ -269,12 +342,57 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   completedTask: {
-
     textDecorationLine: 'line-through',
     opacity: 0.6,
   },
-    deleteButton: {
+  deleteButton: {
     margin: 0,
+  },
+  addTaskButton: {
+    marginTop: 10,
+    backgroundColor: "#5A8A93",
+    borderRadius: 8,
+    alignSelf: "center",
+    paddingHorizontal: 24,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(90, 138, 147, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '85%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: "#5A8A93",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#5A8A93",
+    marginBottom: 18,
+    textAlign: "center",
+  },
+  input: {
+    backgroundColor: "#EAF6F9",
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#9DBCC3",
+    fontSize: 16,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
   },
 });
 
