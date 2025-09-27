@@ -26,6 +26,16 @@ export async function getUserById(id) {
     
 }
 
+export const getMongoUserByFirebaseId = async (firebaseUserId) => {
+  try {
+    const response = await axios.get(`${API_URL}/users/firebase/${firebaseUserId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching MongoDB user:', error);
+    throw error;
+  }
+};
+
 export async function createUser(user) {
     const response = await axios.post(`${API_URL}/users`, user);
     if (response.status === 201) {
