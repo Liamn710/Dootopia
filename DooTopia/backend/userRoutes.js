@@ -50,19 +50,21 @@ userRoutes.route("/users/firebase/:firebaseUserId").get(async (request, response
     }
 });
 //update user by id
-userRoutes.route("/users/:id").put(async(request,response) => {
+userRoutes.route("/users/:id").put(async (request, response) => {
     let db = database.getdb();
-    let mongoObject = { 
-        $set: {
-            name: request.body.name,
-            email: request.body.email,
-            createdAt: new Date()
-        }
-    }
-    let data = await db.collection("users").updateOne({_id: new ObjectId(request.params.id)}, mongoObject);
-    response.status(200).json({message: "User updated successfully", userId: data.insertedId});
-    });
+    let id = request.params.id;
+    let updateObject = request.body; // Accepts $inc
 
+    let result = await db.collection("users").updateOne(
+        { _id: new ObjectId(id) },
+        updateObject // This allows $inc, $set, etc.
+    );
+    if (result.modifiedCount > 0) {
+        response.status(200).json({ message: "User updated successfully" });
+    } else {
+        response.status(404).json({ error: "User not found or not updated" });
+    }
+});
 //delete user by id
 userRoutes.route("/users/:id").delete(async(request,response) => {
     let db = database.getdb();

@@ -8,7 +8,7 @@ import { auth } from '../../FirebaseConfig';
 import {createTask} from '../../backend/api'
 import { getMongoUserByFirebaseId } from '../../backend/api'; // Add this import
 import { updateTask } from '../../backend/api'; // Make sure this import exists
-
+import { updateUser } from '../../backend/api';
 
 
 const TasksPage = () => {
@@ -24,7 +24,7 @@ const TasksPage = () => {
         try {
           const mongoUser = await getMongoUserByFirebaseId(userId);
           setMongoUserId(mongoUser._id);
-          console.log('Fetched MongoDB user:', mongoUserId);
+          console.log('Fetched MongoDB user:', mongoUser._id); // <-- logs correct value
         } catch (error) {
           console.error('Error fetching MongoDB user:', error);
         }
@@ -34,6 +34,11 @@ const TasksPage = () => {
   }, [userId]);
 
 const addTask = async (taskTitle: string, taskText: string, taskPoints: number) => {
+  if (!mongoUserId) {
+    // Optionally show an error or prevent adding
+    console.warn("Mongo user ID not loaded yet!");
+    return;
+  }
   let taskObject = {
     title: taskTitle,
     text: taskText,
@@ -43,20 +48,18 @@ const addTask = async (taskTitle: string, taskText: string, taskPoints: number) 
     userId: mongoUserId
   };
 
-  // Await the backend response to get the MongoDB _id
   const result = await createTask(taskObject);
 
-  // Use the MongoDB _id as the task id in your UI
   const newTask: Task = {
     title: taskTitle,
     points: taskPoints,
-    id: result._id, // Use MongoDB _id here
+    id: result._id,
     text: taskText,
     completed: false,
     subtasks: [],
     expanded: false,
-};
-    setTasks(prevTasks => ({
+  };
+  setTasks(prevTasks => ({
     ...prevTasks,
     [newTask.id]: newTask
   }));
@@ -95,10 +98,14 @@ const addTask = async (taskTitle: string, taskText: string, taskPoints: number) 
         completed: !task.completed,
       };
 
-      // Only update in backend if taskId is defined
-      if (taskId) {
-        updateTask(taskId, { completed: updatedTask.completed });
-      }
+      // Update task in backend
+      updateTask(taskId, { completed: updatedTask.completed });
+
+      // Calculate new points for user
+      const pointsChange = updatedTask.completed ? task.points : -task.points;
+
+      // Update user points in backend
+      updateUser(mongoUserId, { $inc: { points: pointsChange } });
 
       return {
         ...prevTasks,
