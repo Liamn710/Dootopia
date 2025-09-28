@@ -1,7 +1,7 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button, Divider, IconButton, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
@@ -31,7 +31,11 @@ const TasksPage = () => {
   const [taskTitle, setTaskTitle] = useState('');
   const [taskText, setTaskText] = useState('');
   const [taskPoints, setTaskPoints] = useState('');
-  const tasksArray = Object.values(tasks);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const tasksArray: Task[] = Object.values(tasks);
+  const incompleteTasks = tasksArray.filter(task => !task.completed);
+  const completedTasks = tasksArray.filter(task => task.completed);
+  const noTasks = tasksArray.length === 0;
   const userId = auth.currentUser?.uid;
 
   useEffect(() => {
@@ -241,38 +245,69 @@ const TasksPage = () => {
   
   
 
-  // 4. Render Functions
-  const renderTask = ({ item }: { item: Task }) => (
+  const TaskCard = ({ task }: { task: Task }) => (
     <View style={styles.taskCard}>
       <View style={styles.taskContent}>
         <CustomCheckbox
-          status={item.completed ? 'checked' : 'unchecked'}
-          onPress={() => toggleTask(item.id)}
+          status={task.completed ? 'checked' : 'unchecked'}
+          onPress={() => toggleTask(task.id)}
         />
         <View style={{ flex: 1 }}>
           <Text variant="titleMedium" style={styles.taskTitle}>
-            {item.title}
+            {task.title}
           </Text>
           <Text
             variant="bodyLarge"
-            style={[styles.taskText, item.completed && styles.completedTask]}
+            style={[styles.taskText, task.completed && styles.completedTask]}
           >
-            {item.text}
+            {task.text}
           </Text>
         </View>
         <Text style={styles.pointsText}>
-          {item.points ?? 0} pts
+          {task.points ?? 0} pts
         </Text>
         <IconButton
           icon={() => <AntDesign name="close" size={20} color="#666" />}
           size={20}
-          onPress={() => deleteTask(item.id)}
+          onPress={() => deleteTask(task.id)}
           style={styles.deleteButton}
         />
       </View>
       <Divider />
     </View>
   );
+
+  const renderCompletedSection = () => {
+    if (completedTasks.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.completedSection}>
+        <TouchableOpacity
+          style={styles.completedHeader}
+          onPress={() => setShowCompleted(prev => !prev)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.completedTitle}>
+            Completed ({completedTasks.length})
+          </Text>
+          <AntDesign
+            name={showCompleted ? 'up' : 'down'}
+            size={16}
+            color="#5A8A93"
+          />
+        </TouchableOpacity>
+        {showCompleted && (
+          <View style={styles.completedList}>
+            {completedTasks.map(task => (
+              <TaskCard key={task.id} task={task} />
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
 
 
   return (
@@ -289,15 +324,18 @@ const TasksPage = () => {
         </View>
       ) : (
         <FlatList
-          data={tasksArray}
+          data={incompleteTasks}
           keyExtractor={(item) => item.id}
-          renderItem={renderTask}
+          renderItem={({ item }) => <TaskCard task={item} />}
           style={styles.tasksList}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            <Text style={styles.emptyState}>No tasks yet. Add your first one!</Text>
+            noTasks ? (
+              <Text style={styles.emptyState}>No tasks yet. Add your first one!</Text>
+            ) : null
           }
+          ListFooterComponent={renderCompletedSection}
         />
       )}
 
@@ -461,6 +499,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     marginTop: 10,
+  },
+  completedSection: {
+    marginTop: 16,
+  },
+  completedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  completedTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5A8A93',
+  },
+  completedList: {
+    marginTop: 8,
   },
 });
 
