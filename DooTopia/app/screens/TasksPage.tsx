@@ -1,11 +1,12 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button, Divider, IconButton, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
 import CustomCheckbox from '../components/CustomCheckbox';
+import AddTaskModal from '../components/AddTaskModal';
 
 type Subtask = {
   id: string;
@@ -240,9 +241,7 @@ const TasksPage = () => {
       }
       return prevTasks;
     });
-  };
-  //fetch tasks from backend every time i come back to this screen
-  
+  };  
   
 
   const TaskCard = ({ task }: { task: Task }) => (
@@ -350,45 +349,17 @@ const TasksPage = () => {
       </Button>
 
       {/* Modal for adding a task */}
-      <Modal
-        animationType="slide"
-        transparent={true}
+      <AddTaskModal
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Add New Task</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Task Title"
-              value={taskTitle}
-              onChangeText={setTaskTitle}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Task Description"
-              value={taskText}
-              onChangeText={setTaskText}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Points"
-              value={taskPoints}
-              onChangeText={setTaskPoints}
-              keyboardType="numeric"
-            />
-            <View style={styles.modalButtons}>
-              <Button mode="contained" onPress={addTask} disabled={!taskTitle || !taskPoints}>
-                Add
-              </Button>
-              <Button mode="outlined" onPress={() => setModalVisible(false)} style={{ marginLeft: 10 }}>
-                Cancel
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setModalVisible(false)}
+        onAdd={addTask}
+        taskTitle={taskTitle}
+        setTaskTitle={setTaskTitle}
+        taskText={taskText}
+        setTaskText={setTaskText}
+        taskPoints={taskPoints}
+        setTaskPoints={setTaskPoints}
+      />
     </KeyboardAvoidingView>
   );
 };
