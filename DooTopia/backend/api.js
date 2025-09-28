@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000'; // Adjust the URL as needed
+const API_URL = 'http://192.168.1.196:3000'; // Adjust the URL as needed
 
 
 // User API*************************************************************************** 
@@ -34,6 +34,11 @@ export const getMongoUserByFirebaseId = async (firebaseUserId) => {
     console.error('Error fetching MongoDB user:', error);
     throw error;
   }
+};
+
+export const getMongoUserByEmail = async (email) => {
+    const response = await axios.get(`${API_URL}/users/email/${email}`);
+    return response.data;
 };
 
 export async function createUser(user) {

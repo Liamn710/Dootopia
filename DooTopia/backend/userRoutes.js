@@ -49,6 +49,16 @@ userRoutes.route("/users/firebase/:firebaseUserId").get(async (request, response
         response.status(404).json({ error: "User not found" });
     }
 });
+// get user by email
+userRoutes.route("/users/email/:email").get(async (request, response) => {
+    let db = database.getdb();
+    let data = await db.collection("users").findOne({ email: request.params.email });
+    if (data) {
+        response.status(200).json(data);
+    } else {
+        response.status(404).json({ error: "User not found" });
+    }
+});
 //update user by id
 userRoutes.route("/users/:id").put(async (request, response) => {
     let db = database.getdb();

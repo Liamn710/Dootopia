@@ -1,17 +1,20 @@
-import React from 'react';
-import { Modal, StyleSheet, TextInput, View } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, View, StyleSheet, TextInput } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 
 interface AddTaskModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: () => void;
+  onAdd: (assignToId: string) => void;
   taskTitle: string;
-  setTaskTitle: (text: string) => void;
+  setTaskTitle: (v: string) => void;
   taskText: string;
-  setTaskText: (text: string) => void;
+  setTaskText: (v: string) => void;
   taskPoints: string;
-  setTaskPoints: (text: string) => void;
+  setTaskPoints: (v: string) => void;
+  assignEmail: string;
+  setAssignEmail: (v: string) => void;
+  isAssignLoading: boolean;
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({
@@ -24,6 +27,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   setTaskText,
   taskPoints,
   setTaskPoints,
+  assignEmail,
+  setAssignEmail,
+  isAssignLoading,
 }) => {
   return (
     <Modal
@@ -54,9 +60,21 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             onChangeText={setTaskPoints}
             keyboardType="numeric"
           />
+          <TextInput
+            style={styles.input}
+            placeholder="Assign to (email, optional)"
+            value={assignEmail}
+            onChangeText={setAssignEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
           <View style={styles.modalButtons}>
-            <Button mode="contained" onPress={onAdd} disabled={!taskTitle || !taskPoints}>
-              Add
+            <Button
+              mode="contained"
+              onPress={() => onAdd(assignEmail)}
+              disabled={!taskTitle || !taskPoints || isAssignLoading}
+            >
+              {isAssignLoading ? "Assigning..." : "Add"}
             </Button>
             <Button mode="outlined" onPress={onClose} style={{ marginLeft: 10 }}>
               Cancel
@@ -80,7 +98,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
-    shadowColor: '#5A8A93',
+    shadowColor: "#5A8A93",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18,
     shadowRadius: 16,
@@ -88,24 +106,24 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#5A8A93',
+    fontWeight: "bold",
+    color: "#5A8A93",
     marginBottom: 18,
-    textAlign: 'center',
+    textAlign: "center",
   },
   input: {
-    backgroundColor: '#EAF6F9',
+    backgroundColor: "#EAF6F9",
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderRadius: 8,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#9DBCC3',
+    borderColor: "#9DBCC3",
     fontSize: 16,
   },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 10,
   },
 });
