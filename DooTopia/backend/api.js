@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://192.168.1.196:3000'; // Adjust the URL as needed
+const API_URL = 'http://localhost:3000'; // Adjust the URL as needed
 
 
 // User API*************************************************************************** 

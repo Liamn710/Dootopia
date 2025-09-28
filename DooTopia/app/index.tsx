@@ -1,16 +1,14 @@
 import { auth } from "@/FirebaseConfig";
 import { router } from "expo-router";
-import { onAuthStateChanged, User } from "firebase/auth";
-import React, { useEffect } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-const index = () => {
-  const [user, setUser] = React.useState<User | null>(null);
-  const [isInitializing, setIsInitializing] = React.useState(true);
+const Index = () => {
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => { 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       console.log("User state changed:", user);
-      setUser(user);
       setIsInitializing(false); // Firebase has finished checking auth state
       
       if (user) {
@@ -43,7 +41,7 @@ const index = () => {
   );
 };
 
-export default index;
+export default Index;
 
 const styles = StyleSheet.create({
   container: {

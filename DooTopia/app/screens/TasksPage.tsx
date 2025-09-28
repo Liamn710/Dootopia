@@ -1,10 +1,11 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
-import React, { useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View, Modal, TouchableOpacity, TextInput } from 'react-native';
-import { Divider, IconButton, Text, Button } from 'react-native-paper';
-import CustomCheckbox from '../components/CustomCheckbox';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { Button, Divider, IconButton, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
-import { createTask, getMongoUserByFirebaseId, updateTask, updateUser } from '../../backend/api';
+import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
+import CustomCheckbox from '../components/CustomCheckbox';
 
 type Subtask = {
   id: string;
@@ -33,7 +34,7 @@ const TasksPage = () => {
   const tasksArray = Object.values(tasks);
   const userId = auth.currentUser?.uid;
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchMongoUser = async () => {
       if (userId) {
         try {
@@ -46,6 +47,51 @@ const TasksPage = () => {
     };
     fetchMongoUser();
   }, [userId]);
+
+  const fetchTasks = useCallback(async () => {
+    if (!mongoUserId) {
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const data = await getTasks();
+      if (!Array.isArray(data)) {
+        throw new Error('Unexpected response when fetching tasks');
+      }
+
+      const formattedTasks = data
+        .filter(task => task.userId === mongoUserId)
+        .reduce((acc: { [id: string]: Task }, task: any) => {
+          const taskId = task._id ?? task.id;
+          if (!taskId) {
+            return acc;
+          }
+          acc[taskId as string] = {
+            id: taskId as string,
+            title: task.title ?? 'Untitled Task',
+            text: task.text ?? '',
+            points: Number(task.points) || 0,
+            completed: Boolean(task.completed),
+            subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
+            expanded: false,
+          };
+          return acc;
+        }, {} as { [id: string]: Task });
+
+      setTasks(formattedTasks);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [mongoUserId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTasks();
+      return undefined;
+    }, [fetchTasks])
+  );
 
   const addTask = async () => {
     if (!mongoUserId) {
@@ -191,6 +237,9 @@ const TasksPage = () => {
       return prevTasks;
     });
   };
+  //fetch tasks from backend every time i come back to this screen
+  
+  
 
   // 4. Render Functions
   const renderTask = ({ item }: { item: Task }) => (
@@ -234,14 +283,23 @@ const TasksPage = () => {
     >
       <Text variant="headlineMedium" style={styles.title}>Tasks Page</Text>
 
-      <FlatList
-        data={tasksArray}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTask}
-        style={styles.tasksList}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      />
+      {isLoading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#5A8A93" />
+        </View>
+      ) : (
+        <FlatList
+          data={tasksArray}
+          keyExtractor={(item) => item.id}
+          renderItem={renderTask}
+          style={styles.tasksList}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            <Text style={styles.emptyState}>No tasks yet. Add your first one!</Text>
+          }
+        />
+      )}
 
       {/* Add Task Button */}
       <Button
@@ -321,6 +379,16 @@ const styles = StyleSheet.create({
   tasksList: {
     flex: 1,
     marginBottom: 10,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    textAlign: 'center',
+    color: '#5A8A93',
+    marginTop: 40,
   },
   taskCard: {
     marginBottom: 8,
