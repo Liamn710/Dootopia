@@ -1,12 +1,12 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Divider, IconButton, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
-import CustomCheckbox from '../components/CustomCheckbox';
 import AddTaskModal from '../components/AddTaskModal';
+import CustomCheckbox from '../components/CustomCheckbox';
 
 type Subtask = {
   id: string;
@@ -26,7 +26,7 @@ type Task = {
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState<{ [id: string]: Task }>({});
-  const [isLoading, setIsLoading] = useState(true);
+  // Removed loading animation/state
   const [mongoUserId, setMongoUserId] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
@@ -58,7 +58,6 @@ const TasksPage = () => {
       return;
     }
     try {
-      setIsLoading(true);
       const data = await getTasks();
       if (!Array.isArray(data)) {
         throw new Error('Unexpected response when fetching tasks');
@@ -87,7 +86,7 @@ const TasksPage = () => {
     } catch (error) {
       console.error('Error fetching tasks:', error);
     } finally {
-      setIsLoading(false);
+      // no loading state to update
     }
   }, [mongoUserId]);
 
@@ -317,26 +316,20 @@ const TasksPage = () => {
     >
       <Text variant="headlineMedium" style={styles.title}>Tasks Page</Text>
 
-      {isLoading ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#5A8A93" />
-        </View>
-      ) : (
-        <FlatList
-          data={incompleteTasks}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <TaskCard task={item} />}
-          style={styles.tasksList}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            noTasks ? (
-              <Text style={styles.emptyState}>No tasks yet. Add your first one!</Text>
-            ) : null
-          }
-          ListFooterComponent={renderCompletedSection}
-        />
-      )}
+      <FlatList
+        data={incompleteTasks}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <TaskCard task={item} />}
+        style={styles.tasksList}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          noTasks ? (
+            <Text style={styles.emptyState}>No tasks yet. Add your first one!</Text>
+          ) : null
+        }
+        ListFooterComponent={renderCompletedSection}
+      />
 
       {/* Add Task Button */}
       <Button
@@ -389,11 +382,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 10,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  // loaderContainer removed
   emptyState: {
     textAlign: 'center',
     color: '#5A8A93',
