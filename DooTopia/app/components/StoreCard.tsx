@@ -4,7 +4,7 @@
 // Users can tap on the card to view more details or purchase the avatar if they have enough points.
 
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View , useWindowDimensions} from 'react-native';
 import { Avatar, Button, Card, Text } from 'react-native-paper';
 
 interface StoreCardProps {
@@ -16,6 +16,9 @@ interface StoreCardProps {
   userPoints?: number; // Add user's current points for purchase validation
   onPurchase: () => void;
   onCardPress?: () => void;
+  cardWidth?: number | string;          
+  coverHeight?: number;                 
+  cardStyle?: any;                      // allow external override
 }
 
 const LeftContent = (props: any) => <Avatar.Icon {...props} icon="store" />
@@ -28,9 +31,22 @@ export const StoreCard = ({
   price,
   userPoints = 0,
   onPurchase,
-  onCardPress
+  onCardPress,
+  cardWidth = '100%',        // default full width
+  coverHeight = 200,         // default image height
+  cardStyle
 }: StoreCardProps) => {
   const canAfford = userPoints >= price;
+   const { width: screenWidth } = useWindowDimensions();
+
+
+  const responsiveWidth = React.useMemo(() => {
+    if (cardWidth) return cardWidth; // explicit override
+    if (screenWidth >= 1000) return '23%'; // ~4 per row with gaps
+    if (screenWidth >= 760)  return '30%'; // 3 per row
+    if (screenWidth >= 520)  return '46%'; // 2 per row
+    return '100%';                        // 1 per row
+  }, [screenWidth, cardWidth]);
 
   return (
     <Card style={styles.card} onPress={onCardPress}>
@@ -61,20 +77,20 @@ export const StoreCard = ({
 const styles = StyleSheet.create({
   card: {
     margin: 10,
+
   },
   cover: {
-    height: 200,
-    //fill
-    resizeMode: 'cover',
     width: '100%',
-    
   },
   priceContainer: {
     marginTop: 8,
     alignItems: 'flex-start',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   priceText: {
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#6200ee',
   },
 });
+export default StoreCard;
