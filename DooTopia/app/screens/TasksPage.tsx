@@ -2,30 +2,16 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Divider, IconButton, Text } from 'react-native-paper';
+import { Button, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
 import AddTaskModal from '../components/AddTaskModal';
-import CustomCheckbox from '../components/CustomCheckbox';
-
-type Subtask = {
-  id: string;
-  text: string;
-  completed: boolean;
-};
-
-type Task = {
-  id: string;
-  title: string;
-  text: string;
-  points: number;
-  completed: boolean;
-  subtasks: Subtask[];
-  expanded: boolean;
-};
+import TaskCard from '../components/TaskCard';
+import type { Subtask } from '../types/Subtask';
+import type { Task, TaskDictionary } from '../types/Task';
 
 const TasksPage = () => {
-  const [tasks, setTasks] = useState<{ [id: string]: Task }>({});
+  const [tasks, setTasks] = useState<TaskDictionary>({});
   // Removed loading animation/state
   const [mongoUserId, setMongoUserId] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -65,7 +51,7 @@ const TasksPage = () => {
 
       const formattedTasks = data
         .filter(task => task.userId === mongoUserId)
-        .reduce((acc: { [id: string]: Task }, task: any) => {
+        .reduce((acc: TaskDictionary, task: any) => {
           const taskId = task._id ?? task.id;
           if (!taskId) {
             return acc;
@@ -80,7 +66,7 @@ const TasksPage = () => {
             expanded: false,
           };
           return acc;
-        }, {} as { [id: string]: Task });
+        }, {} as TaskDictionary);
 
       setTasks(formattedTasks);
     } catch (error) {
@@ -243,38 +229,6 @@ const TasksPage = () => {
   };  
   
 
-  const TaskCard = ({ task }: { task: Task }) => (
-    <View style={styles.taskCard}>
-      <View style={styles.taskContent}>
-        <CustomCheckbox
-          status={task.completed ? 'checked' : 'unchecked'}
-          onPress={() => toggleTask(task.id)}
-        />
-        <View style={{ flex: 1 }}>
-          <Text variant="titleMedium" style={styles.taskTitle}>
-            {task.title}
-          </Text>
-          <Text
-            variant="bodyLarge"
-            style={[styles.taskText, task.completed && styles.completedTask]}
-          >
-            {task.text}
-          </Text>
-        </View>
-        <Text style={styles.pointsText}>
-          {task.points ?? 0} pts
-        </Text>
-        <IconButton
-          icon={() => <AntDesign name="close" size={20} color="#666" />}
-          size={20}
-          onPress={() => deleteTask(task.id)}
-          style={styles.deleteButton}
-        />
-      </View>
-      <Divider />
-    </View>
-  );
-
   const renderCompletedSection = () => {
     if (completedTasks.length === 0) {
       return null;
@@ -299,7 +253,12 @@ const TasksPage = () => {
         {showCompleted && (
           <View style={styles.completedList}>
             {completedTasks.map(task => (
-              <TaskCard key={task.id} task={task} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                onToggleComplete={toggleTask}
+                onDelete={deleteTask}
+              />
             ))}
           </View>
         )}
@@ -319,7 +278,13 @@ const TasksPage = () => {
       <FlatList
         data={incompleteTasks}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <TaskCard task={item} />}
+        renderItem={({ item }) => (
+          <TaskCard
+            task={item}
+            onToggleComplete={toggleTask}
+            onDelete={deleteTask}
+          />
+        )}
         style={styles.tasksList}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -336,7 +301,7 @@ const TasksPage = () => {
         mode="contained"
         style={styles.addTaskButton}
         onPress={() => setModalVisible(true)}
-        icon="plus"
+        icon={() => <AntDesign name="plus" size={20} color="#fff" />}
       >
         Add Task
       </Button>
@@ -363,17 +328,6 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#D6ECF2',
   },
-  taskTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 2,
-  },
-  pointsText: {
-    marginLeft: 8,
-    color: '#5A8A93',
-    fontWeight: '600',
-    alignSelf: 'center',
-  },
   title: {
     textAlign: 'center',
     marginBottom: 20,
@@ -387,32 +341,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#5A8A93',
     marginTop: 40,
-  },
-  taskCard: {
-    marginBottom: 8,
-    elevation: 2,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 8,
-    shadowColor: "#5A8A93",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-  },
-  taskContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  taskText: {
-    flex: 1,
-    marginLeft: 8,
-  },
-  completedTask: {
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
-  },
-  deleteButton: {
-    margin: 0,
   },
   addTaskButton: {
     marginTop: 10,
