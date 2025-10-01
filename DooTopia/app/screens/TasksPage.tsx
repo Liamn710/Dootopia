@@ -1,6 +1,6 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
@@ -117,11 +117,11 @@ const TasksPage = () => {
     setTaskText('');
     setTaskPoints('');
   };
-
+  //FIXME: add the option to change subtask text
   const addSubtask = (taskId: string) => { 
     const newSubtask: Subtask = {
       id: Date.now().toString(),
-      text: 'New Subtask',
+      text: 'Tap to add subtask',
       completed: false,
     };
 
@@ -168,7 +168,7 @@ const TasksPage = () => {
   });
 };
 
-
+  //
   const toggleSubtask = (taskId: string, subtaskId: string) => {
     setTasks(prevTasks => {
       const task = prevTasks[taskId];
@@ -226,6 +226,25 @@ const TasksPage = () => {
       }
       return prevTasks;
     });
+  };
+
+  const editSubtask = (taskId: string, subtaskId: string, newText: string) => {
+    setTasks(prevTasks => {
+      const task = prevTasks[taskId];
+      if (task) {
+        const updatedSubtasks = task.subtasks.map(subtask =>
+          subtask.id === subtaskId ? { ...subtask, text: newText } : subtask
+        );
+        return {
+          ...prevTasks,
+          [taskId]: {
+            ...task,
+            subtasks: updatedSubtasks,
+          },
+        };
+      }
+      return prevTasks;
+    });
   };  
   
 
@@ -258,6 +277,11 @@ const TasksPage = () => {
                 task={task}
                 onToggleComplete={toggleTask}
                 onDelete={deleteTask}
+                onToggleExpansion={toggleExpansion}
+                onAddSubtask={addSubtask}
+                onToggleSubtask={toggleSubtask}
+                onDeleteSubtask={deleteSubtask}
+                onEditSubtask={editSubtask}
               />
             ))}
           </View>
@@ -283,6 +307,11 @@ const TasksPage = () => {
             task={item}
             onToggleComplete={toggleTask}
             onDelete={deleteTask}
+            onToggleExpansion={toggleExpansion}
+            onAddSubtask={addSubtask}
+            onToggleSubtask={toggleSubtask}
+            onDeleteSubtask={deleteSubtask}
+            onEditSubtask={editSubtask}
           />
         )}
         style={styles.tasksList}
