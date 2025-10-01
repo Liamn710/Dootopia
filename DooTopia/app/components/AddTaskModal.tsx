@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, StyleSheet, TextInput, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { Button, Menu, Portal, Text } from 'react-native-paper';
 
 interface AddTaskModalProps {
   visible: boolean;
@@ -14,17 +14,18 @@ interface AddTaskModalProps {
   setTaskPoints: (text: string) => void;
 }
 
-const AddTaskModal: React.FC<AddTaskModalProps> = ({
-  visible,
-  onClose,
-  onAdd,
-  taskTitle,
-  setTaskTitle,
-  taskText,
-  setTaskText,
-  taskPoints,
-  setTaskPoints,
-}) => {
+const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints }: AddTaskModalProps) => {
+  const [pointsMenuVisible, setPointsMenuVisible] = useState(false);
+  const [menuWidth, setMenuWidth] = useState<number | undefined>(undefined);
+  const [descriptionHeight, setDescriptionHeight] = useState(120);
+
+  const openPointsMenu = () => setPointsMenuVisible(true);
+  const closePointsMenu = () => setPointsMenuVisible(false);
+  const handleSelectPoints = (value: string) => {
+    setTaskPoints(value);
+    closePointsMenu();
+  };
+
   return (
     <Modal
       animationType="slide"
@@ -32,8 +33,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       visible={visible}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+      <Portal.Host>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Add New Task</Text>
           <TextInput
             style={styles.input}
@@ -42,28 +44,57 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             onChangeText={setTaskTitle}
           />
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.descriptionInput, { height: Math.max(120, descriptionHeight) }]}
             placeholder="Task Description"
             value={taskText}
             onChangeText={setTaskText}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            onContentSizeChange={event => setDescriptionHeight(event.nativeEvent.contentSize.height)}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Points"
-            value={taskPoints}
-            onChangeText={setTaskPoints}
-            keyboardType="numeric"
-          />
-          <View style={styles.modalButtons}>
-            <Button mode="contained" onPress={onAdd} disabled={!taskTitle || !taskPoints}>
-              Add
-            </Button>
-            <Button mode="outlined" onPress={onClose} style={{ marginLeft: 10 }}>
-              Cancel
-            </Button>
+          <View style={styles.menuWrapper}>
+            <Menu
+              visible={pointsMenuVisible}
+              onDismiss={closePointsMenu}
+              anchorPosition="bottom"
+              contentStyle={[styles.menuContent, menuWidth ? { width: menuWidth } : null]}
+              anchor={
+                <View
+                  onLayout={({ nativeEvent }) => setMenuWidth(nativeEvent.layout.width)}
+                  style={styles.dropdownAnchor}
+                >
+                  <Button
+                    mode="outlined"
+                    onPress={openPointsMenu}
+                    style={styles.dropdownButton}
+                    contentStyle={styles.dropdownButtonContent}
+                  >
+                    {taskPoints ? `${taskPoints} pts` : 'Select Points'}
+                  </Button>
+                </View>
+              }
+            >
+              {[1, 3, 5, 10].map(option => (
+                <Menu.Item
+                  key={option}
+                  onPress={() => handleSelectPoints(option.toString())}
+                  title={`${option} pts`}
+                />
+              ))}
+            </Menu>
+          </View>
+            <View style={styles.modalButtons}>
+              <Button mode="contained" onPress={onAdd} disabled={!taskTitle || !taskPoints}>
+                Add
+              </Button>
+              <Button mode="outlined" onPress={onClose} style={{ marginLeft: 10 }}>
+                Cancel
+              </Button>
+            </View>
           </View>
         </View>
-      </View>
+      </Portal.Host>
     </Modal>
   );
 };
@@ -102,6 +133,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#9DBCC3',
     fontSize: 16,
+  },
+  descriptionInput: {
+    paddingVertical: 16,
+  },
+  menuWrapper: {
+    marginBottom: 15,
+  },
+  menuContent: {
+    paddingVertical: 0,
+  },
+  dropdownAnchor: {
+    width: '100%',
+  },
+  dropdownButton: {
+    borderColor: '#9DBCC3',
+    justifyContent: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 8,
+    width: '100%',
+  },
+  dropdownButtonContent: {
+    justifyContent: 'center',
   },
   modalButtons: {
     flexDirection: 'row',

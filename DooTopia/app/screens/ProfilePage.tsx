@@ -1,7 +1,7 @@
 import { signOut, deleteUser as firebaseDeleteUser,sendPasswordResetEmail } from 'firebase/auth';
 import React from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text, Button, Avatar } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import { useRouter } from 'expo-router';
 import { deleteUser as deleteUserApi, getMongoUserByFirebaseId } from '../../backend/api';
@@ -56,6 +56,11 @@ const ProfilePage = () => {
     } else {
       Alert.alert('Error', 'No user email found.');
     }
+  };
+
+  const onAvatarPress = () => {
+    //go to store page at the moment
+    router.push("/screens/StorePage");
   };
 
   return (
