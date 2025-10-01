@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
-import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
+import { createTask,deleteTask as deleteTaskApi,deleteSubtask as deleteSubtaskApi ,getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
 import AddTaskModal from '../components/AddTaskModal';
 import TaskCard from '../components/TaskCard';
 import type { Subtask } from '../types/Subtask';
@@ -117,7 +117,6 @@ const TasksPage = () => {
     setTaskText('');
     setTaskPoints('');
   };
-  //FIXME: add the option to change subtask text
   const addSubtask = (taskId: string) => { 
     const newSubtask: Subtask = {
       id: Date.now().toString(),
@@ -204,28 +203,37 @@ const TasksPage = () => {
     });
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks(prevTasks => {
-      const { [taskId]: deletedTask, ...remainingTasks } = prevTasks;
-      return remainingTasks;
-    });
+  //TODO : Make asyc in order to delete from backend as well as make it const
+  const deleteTask = async (taskId: string) => {
+    try {
+      await deleteTaskApi(taskId);
+      setTasks(prev => {
+        const { [taskId]: _removed, ...rest } = prev;
+        return rest;
+      });
+    } catch (err) {
+      console.error('Failed to delete task', err);
+    }
   };
 
-  const deleteSubtask = (taskId: string, subtaskId: string) => {
-    setTasks(prevTasks => {
-      const task = prevTasks[taskId];
-      if (task) {
-        const updatedSubtasks = task.subtasks.filter(subtask => subtask.id !== subtaskId);
+  //TODO : Make asyc in order to delete from backend as well as make it const
+  const deleteSubtask = async (taskId: string, subtaskId: string) => {
+    try {
+      await deleteSubtaskApi(subtaskId);
+      setTasks(prev => {
+        const task = prev[taskId];
+        if (!task) return prev;
         return {
-          ...prevTasks,
+          ...prev,
           [taskId]: {
             ...task,
-            subtasks: updatedSubtasks,
+            subtasks: task.subtasks.filter(subtask => subtask.id !== subtaskId),
           },
         };
-      }
-      return prevTasks;
-    });
+      });
+    } catch (err) {
+      console.error('Failed to delete subtask', err);
+    }
   };
 
   const editSubtask = (taskId: string, subtaskId: string, newText: string) => {
