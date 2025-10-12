@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button, Divider, IconButton, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser, getUsers } from '../../backend/api';
 import CustomCheckbox from '../components/CustomCheckbox';
 import AddTaskModal from '../components/AddTaskModal';
@@ -43,21 +44,43 @@ const TasksPage = () => {
   const [reassignTaskId, setReassignTaskId] = useState<string | null>(null);
   const [reassignLoading, setReassignLoading] = useState(false);
   const [usersMap, setUsersMap] = useState<{ [id: string]: string }>({});
+  const [userId, setUserId] = useState<string | null>(null);
   const tasksArray: Task[] = Object.values(tasks);
   const incompleteTasks = tasksArray.filter(task => !task.completed);
   const completedTasks = tasksArray.filter(task => task.completed);
   const noTasks = tasksArray.length === 0;
-  const userId = auth.currentUser?.uid;
   
+  // Listen for Firebase Auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+      if (user) {
+        setUserId(user.uid);
+      } else {
+        setUserId(null);
+        setMongoUserId('');
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch Mongo user when userId changes
   useEffect(() => {
     const fetchMongoUser = async () => {
       if (userId) {
         try {
           const mongoUser = await getMongoUserByFirebaseId(userId);
-          setMongoUserId(mongoUser._id);
+          if (mongoUser && mongoUser._id) {
+            setMongoUserId(mongoUser._id);
+          } else {
+            setMongoUserId('');
+            console.error('Mongo user not found or missing _id:', mongoUser);
+          }
         } catch (error) {
+          setMongoUserId('');
           console.error('Error fetching MongoDB user:', error);
         }
+      } else {
+        setMongoUserId('');
       }
     };
     fetchMongoUser();
@@ -92,7 +115,7 @@ const TasksPage = () => {
       }
 
       const formattedTasks = data
-        .filter(task => task.userId === mongoUserId)
+        .filter(task => task.assignedToId === mongoUserId || task.userId === mongoUserId)
         .reduce((acc: { [id: string]: Task }, task: any) => {
           const taskId = task._id ?? task.id;
           if (!taskId) {
@@ -106,6 +129,7 @@ const TasksPage = () => {
             completed: Boolean(task.completed),
             subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
             expanded: false,
+            assignedToId: task.assignedToId, // <-- add this line
           };
           return acc;
         }, {} as { [id: string]: Task });
@@ -165,6 +189,7 @@ const TasksPage = () => {
       completed: false,
       subtasks: [],
       expanded: false,
+      assignedToId: result.assignedToId, // <-- add this line
     };
     setTasks(prevTasks => ({
       ...prevTasks,
@@ -305,7 +330,8 @@ const TasksPage = () => {
         Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
       }
     }
-  await updateTask(reassignTaskId, { assignedToId: newAssignedToId });
+    console.log('Updating task:', reassignTaskId, { assignedToId: newAssignedToId });
+    await updateTask(reassignTaskId, { assignedToId: newAssignedToId });
       setTasks(prevTasks => ({
       ...prevTasks,
       [reassignTaskId]: {
