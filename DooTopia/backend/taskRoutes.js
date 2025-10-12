@@ -33,7 +33,8 @@ taskRoutes.route("/tasks").post(async (request, response) => {
         completed: request.body.completed,
         createdAt: request.body.createdAt,
         points: request.body.points,
-        userId: request.body.userId
+        userId: request.body.userId,
+        assignedToId: request.body.assignedToId
     };
     let data = await db.collection("tasks").insertOne(mongoObject);
 
@@ -47,8 +48,6 @@ taskRoutes.route("/tasks/:id").put(async (request, response) => {
     let db = database.getdb();
     let id = request.params.id;
     let updateObject = { $set: request.body };
-
-    // If your tasks use string IDs:
     let result = await db.collection("tasks").updateOne({ _id: new ObjectId(id) }, updateObject);
     if (result.modifiedCount > 0) {
         response.status(200).json({ message: "Task updated successfully" });

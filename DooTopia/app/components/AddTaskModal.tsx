@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { Modal, StyleSheet, TextInput, View } from 'react-native';
 import { Button, Menu, Portal, Text } from 'react-native-paper';
-
 interface AddTaskModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: () => void;
+  onAdd: (assignToId: string) => void;
   taskTitle: string;
-  setTaskTitle: (text: string) => void;
+  setTaskTitle: (v: string) => void;
   taskText: string;
-  setTaskText: (text: string) => void;
+  setTaskText: (v: string) => void;
   taskPoints: string;
-  setTaskPoints: (text: string) => void;
+  setTaskPoints: (v: string) => void;
+  assignEmail: string;
+  setAssignEmail: (v: string) => void;
+  isAssignLoading: boolean;
 }
 
 const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints }: AddTaskModalProps) => {
@@ -111,7 +113,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
-    shadowColor: '#5A8A93',
+    shadowColor: "#5A8A93",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18,
     shadowRadius: 16,
@@ -119,19 +121,19 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#5A8A93',
+    fontWeight: "bold",
+    color: "#5A8A93",
     marginBottom: 18,
-    textAlign: 'center',
+    textAlign: "center",
   },
   input: {
-    backgroundColor: '#EAF6F9',
+    backgroundColor: "#EAF6F9",
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderRadius: 8,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#9DBCC3',
+    borderColor: "#9DBCC3",
     fontSize: 16,
   },
   descriptionInput: {
@@ -157,8 +159,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 10,
   },
 });

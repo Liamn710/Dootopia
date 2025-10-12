@@ -1,5 +1,32 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Button, Divider, IconButton, Text } from 'react-native-paper';
+import { auth } from '../../FirebaseConfig';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser, getUsers } from '../../backend/api';
+import CustomCheckbox from '../components/CustomCheckbox';
+import AddTaskModal from '../components/AddTaskModal';
+import { getMongoUserByEmail } from '../../backend/api';
+
+
+type Subtask = {
+  id: string;
+  text: string;
+  completed: boolean;
+};
+
+type Task = {
+  id: string;
+  title: string;
+  text: string;
+  points: number;
+  completed: boolean;
+  subtasks: Subtask[];
+  expanded: boolean;
+  assignedToId?: string;
+};
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
@@ -19,25 +46,71 @@ const TasksPage = () => {
   const [taskText, setTaskText] = useState('');
   const [taskPoints, setTaskPoints] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
+  const [assignEmail, setAssignEmail] = useState('');
+  const [isAssignLoading, setIsAssignLoading] = useState(false);
+  const [reassignModalVisible, setReassignModalVisible] = useState(false);
+  const [reassignEmail, setReassignEmail] = useState('');
+  const [reassignTaskId, setReassignTaskId] = useState<string | null>(null);
+  const [reassignLoading, setReassignLoading] = useState(false);
+  const [usersMap, setUsersMap] = useState<{ [id: string]: string }>({});
+  const [userId, setUserId] = useState<string | null>(null);
   const tasksArray: Task[] = Object.values(tasks);
   const incompleteTasks = tasksArray.filter(task => !task.completed);
   const completedTasks = tasksArray.filter(task => task.completed);
   const noTasks = tasksArray.length === 0;
-  const userId = auth.currentUser?.uid;
+  
+  // Listen for Firebase Auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+      if (user) {
+        setUserId(user.uid);
+      } else {
+        setUserId(null);
+        setMongoUserId('');
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
+  // Fetch Mongo user when userId changes
   useEffect(() => {
     const fetchMongoUser = async () => {
       if (userId) {
         try {
           const mongoUser = await getMongoUserByFirebaseId(userId);
-          setMongoUserId(mongoUser._id);
+          if (mongoUser && mongoUser._id) {
+            setMongoUserId(mongoUser._id);
+          } else {
+            setMongoUserId('');
+            console.error('Mongo user not found or missing _id:', mongoUser);
+          }
         } catch (error) {
+          setMongoUserId('');
           console.error('Error fetching MongoDB user:', error);
         }
+      } else {
+        setMongoUserId('');
       }
     };
     fetchMongoUser();
   }, [userId]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const users = await getUsers(); // Your API call to /users
+        // Build a map: { userId: name }
+        const map: { [id: string]: string } = {};
+        users.forEach((user: any) => {
+          map[user._id] = user.name;
+        });
+        setUsersMap(map);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const fetchTasks = useCallback(async () => {
     if (!mongoUserId) {
@@ -50,8 +123,8 @@ const TasksPage = () => {
       }
 
       const formattedTasks = data
-        .filter(task => task.userId === mongoUserId)
-        .reduce((acc: TaskDictionary, task: any) => {
+        .filter(task => task.assignedToId === mongoUserId || task.userId === mongoUserId)
+        .reduce((acc: { [id: string]: Task }, task: any) => {
           const taskId = task._id ?? task.id;
           if (!taskId) {
             return acc;
@@ -64,6 +137,7 @@ const TasksPage = () => {
             completed: Boolean(task.completed),
             subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
             expanded: false,
+            assignedToId: task.assignedToId, // <-- add this line
           };
           return acc;
         }, {} as TaskDictionary);
@@ -83,18 +157,34 @@ const TasksPage = () => {
     }, [fetchTasks])
   );
 
-  const addTask = async () => {
+  const addTask = async (emailToAssign: string) => {
     if (!mongoUserId) {
       console.warn("Mongo user ID not loaded yet!");
       return;
     }
+    setIsAssignLoading(true);
+    let assignToId = mongoUserId;
+    if (emailToAssign && emailToAssign !== "") {
+      try {
+        const assignedUser = await getMongoUserByEmail(emailToAssign);
+        if (assignedUser && assignedUser._id) {
+          assignToId = assignedUser._id;
+        } else {
+          Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
+        }
+      } catch (error) {
+        Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
+      }
+    }
+
     let taskObject = {
       title: taskTitle,
       text: taskText,
       completed: false,
       createdAt: new Date().toISOString(),
       points: Number(taskPoints),
-      userId: mongoUserId
+      userId: mongoUserId,
+      assignedToId: assignToId // <-- use assignedToId here
     };
 
     const result = await createTask(taskObject);
@@ -107,6 +197,7 @@ const TasksPage = () => {
       completed: false,
       subtasks: [],
       expanded: false,
+      assignedToId: result.assignedToId, // <-- add this line
     };
     setTasks(prevTasks => ({
       ...prevTasks,
@@ -116,6 +207,8 @@ const TasksPage = () => {
     setTaskTitle('');
     setTaskText('');
     setTaskPoints('');
+    setAssignEmail('');
+    setIsAssignLoading(false);
   };
   const addSubtask = (taskId: string) => { 
     const newSubtask: Subtask = {
@@ -256,6 +349,86 @@ const TasksPage = () => {
   };  
   
 
+  const handleReassign = async () => {
+    if (!reassignTaskId) return;
+    setReassignLoading(true);
+    let newAssignedToId = mongoUserId;
+    if (reassignEmail && reassignEmail !== "") {
+      try {
+        const assignedUser = await getMongoUserByEmail(reassignEmail);
+        if (assignedUser && assignedUser._id) {
+          newAssignedToId = assignedUser._id;
+        } else {
+          Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
+        }
+      } catch (error) {
+        Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
+      }
+    }
+    console.log('Updating task:', reassignTaskId, { assignedToId: newAssignedToId });
+    await updateTask(reassignTaskId, { assignedToId: newAssignedToId });
+      setTasks(prevTasks => ({
+      ...prevTasks,
+      [reassignTaskId]: {
+        ...prevTasks[reassignTaskId]!,
+        assignedToId: newAssignedToId,
+      }
+    }));
+    setReassignModalVisible(false);
+    setReassignEmail('');
+    setReassignTaskId(null);
+    setReassignLoading(false);
+  };
+
+  const getAssignedUserName = (assignedToId?: string) => {
+    if (!assignedToId || assignedToId === mongoUserId) return "You";
+    return usersMap[assignedToId] || "Unknown";
+  };
+
+  const TaskCard = ({ task }: { task: Task }) => (
+    <View style={styles.taskCard}>
+      <View style={styles.taskContent}>
+        <CustomCheckbox
+          status={task.completed ? 'checked' : 'unchecked'}
+          onPress={() => toggleTask(task.id)}
+        />
+        <View style={{ flex: 1 }}>
+          <Text variant="titleMedium" style={styles.taskTitle}>
+            {task.title}
+          </Text>
+          <Text
+            variant="bodyLarge"
+            style={[styles.taskText, task.completed && styles.completedTask]}
+          >
+            {task.text}
+          </Text>
+        </View>
+        <Text style={styles.pointsText}>
+          {task.points ?? 0} pts
+        </Text>
+        <IconButton
+          icon={() => <AntDesign name="close" size={20} color="#666" />}
+          size={20}
+          onPress={() => deleteTask(task.id)}
+          style={styles.deleteButton}
+        />
+      </View>
+      <Divider />
+      <View style={styles.reassignButtonContainer}>
+        <Button
+          mode="outlined"
+          style={{ marginRight: 8 }}
+          onPress={() => {
+            setReassignTaskId(task.id);
+            setReassignModalVisible(true);
+          }}
+        >
+          {getAssignedUserName(task.assignedToId)}
+        </Button>
+      </View>
+    </View>
+  );
+
   const renderCompletedSection = () => {
     if (completedTasks.length === 0) {
       return null;
@@ -354,7 +527,44 @@ const TasksPage = () => {
         setTaskText={setTaskText}
         taskPoints={taskPoints}
         setTaskPoints={setTaskPoints}
+        assignEmail={assignEmail}
+        setAssignEmail={setAssignEmail}
+        isAssignLoading={isAssignLoading}
       />
+
+      {/* Modal for reassigning a task */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={reassignModalVisible}
+        onRequestClose={() => setReassignModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Reassign Task</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Assign to (email, optional)"
+              value={reassignEmail}
+              onChangeText={setReassignEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                mode="contained"
+                onPress={handleReassign}
+                disabled={reassignLoading}
+              >
+                {reassignLoading ? "Assigning..." : "Change Assignment"}
+              </Button>
+              <Button mode="outlined" onPress={() => setReassignModalVisible(false)} style={{ marginLeft: 10 }}>
+                Cancel
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -442,6 +652,11 @@ const styles = StyleSheet.create({
   },
   completedList: {
     marginTop: 8,
+  },
+  reassignButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingVertical: 8,
   },
 });
 
