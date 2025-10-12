@@ -76,12 +76,16 @@ const ProfilePage = () => {
       <Button mode="outlined" onPress={handleChangePassword} style={{ marginTop: 10 }}>
         Change Password
       </Button>
-      <Button mode="contained" onPress={handleDeleteUser} style={{ marginTop: 10 }} color="#d32f2f">
-        Delete Account
-      </Button>
+      {/* Delete button absolutely positioned in bottom left */}
+      <View style={styles.deleteButtonContainer}>
+        <Button mode="contained" onPress={handleDeleteUser} style={styles.deleteButton} buttonColor="#d32f2f" textColor="#fff">
+          Delete Account
+        </Button>
+      </View>
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -89,6 +93,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  deleteButtonContainer: {
+    position: 'absolute',
+    left: 20,
+    bottom: 30,
+  },
+  deleteButton: {
+    backgroundColor: '#d32f2f',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    elevation: 2,
   },
 });
 
