@@ -16,7 +16,7 @@ interface AddTaskModalProps {
   isAssignLoading: boolean;
 }
 
-const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints }: AddTaskModalProps) => {
+const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints, assignEmail, setAssignEmail }: AddTaskModalProps) => {
   const [pointsMenuVisible, setPointsMenuVisible] = useState(false);
   const [menuWidth, setMenuWidth] = useState<number | undefined>(undefined);
   const [descriptionHeight, setDescriptionHeight] = useState(120);
@@ -55,6 +55,17 @@ const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskTe
             textAlignVertical="top"
             onContentSizeChange={event => setDescriptionHeight(event.nativeEvent.contentSize.height)}
           />
+            <TextInput
+              style={styles.input}
+              placeholder="Assign to (email, optional)"
+              value={assignEmail}
+              onChangeText={setAssignEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <Text style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+              Leave blank to assign to yourself
+            </Text>
           <View style={styles.menuWrapper}>
             <Menu
               visible={pointsMenuVisible}
@@ -87,7 +98,7 @@ const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskTe
             </Menu>
           </View>
             <View style={styles.modalButtons}>
-              <Button mode="contained" onPress={onAdd} disabled={!taskTitle || !taskPoints}>
+              <Button mode="contained" onPress={() => onAdd(assignEmail)} disabled={!taskTitle || !taskPoints}>
                 Add
               </Button>
               <Button mode="outlined" onPress={onClose} style={{ marginLeft: 10 }}>

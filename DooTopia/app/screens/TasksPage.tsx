@@ -5,34 +5,10 @@ import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platfo
 import { Button, Divider, IconButton, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser, getUsers } from '../../backend/api';
+import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser, getUsers, getMongoUserByEmail } from '../../backend/api';
 import CustomCheckbox from '../components/CustomCheckbox';
 import AddTaskModal from '../components/AddTaskModal';
-import { getMongoUserByEmail } from '../../backend/api';
-
-
-type Subtask = {
-  id: string;
-  text: string;
-  completed: boolean;
-};
-
-type Task = {
-  id: string;
-  title: string;
-  text: string;
-  points: number;
-  completed: boolean;
-  subtasks: Subtask[];
-  expanded: boolean;
-  assignedToId?: string;
-};
-import { useCallback, useEffect, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
-import { auth } from '../../FirebaseConfig';
-import { createTask,deleteTask as deleteTaskApi,deleteSubtask as deleteSubtaskApi ,getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
-import AddTaskModal from '../components/AddTaskModal';
+import { deleteTask as deleteTaskApi,deleteSubtask as deleteSubtaskApi} from '../../backend/api';
 import TaskCard from '../components/TaskCard';
 import type { Subtask } from '../types/Subtask';
 import type { Task, TaskDictionary } from '../types/Task';
@@ -48,9 +24,6 @@ const TasksPage = () => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [assignEmail, setAssignEmail] = useState('');
   const [isAssignLoading, setIsAssignLoading] = useState(false);
-  const [reassignModalVisible, setReassignModalVisible] = useState(false);
-  const [reassignEmail, setReassignEmail] = useState('');
-  const [reassignTaskId, setReassignTaskId] = useState<string | null>(null);
   const [reassignLoading, setReassignLoading] = useState(false);
   const [usersMap, setUsersMap] = useState<{ [id: string]: string }>({});
   const [userId, setUserId] = useState<string | null>(null);
@@ -349,13 +322,14 @@ const TasksPage = () => {
   };  
   
 
-  const handleReassign = async () => {
-    if (!reassignTaskId) return;
+
+  // Assignment handler for TaskCard
+  const handleReassign = async (taskId: string, email: string) => {
     setReassignLoading(true);
     let newAssignedToId = mongoUserId;
-    if (reassignEmail && reassignEmail !== "") {
+    if (email && email !== "") {
       try {
-        const assignedUser = await getMongoUserByEmail(reassignEmail);
+        const assignedUser = await getMongoUserByEmail(email);
         if (assignedUser && assignedUser._id) {
           newAssignedToId = assignedUser._id;
         } else {
@@ -365,18 +339,14 @@ const TasksPage = () => {
         Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
       }
     }
-    console.log('Updating task:', reassignTaskId, { assignedToId: newAssignedToId });
-    await updateTask(reassignTaskId, { assignedToId: newAssignedToId });
-      setTasks(prevTasks => ({
+    await updateTask(taskId, { assignedToId: newAssignedToId });
+    setTasks(prevTasks => ({
       ...prevTasks,
-      [reassignTaskId]: {
-        ...prevTasks[reassignTaskId]!,
+      [taskId]: {
+        ...prevTasks[taskId]!,
         assignedToId: newAssignedToId,
       }
     }));
-    setReassignModalVisible(false);
-    setReassignEmail('');
-    setReassignTaskId(null);
     setReassignLoading(false);
   };
 
@@ -385,55 +355,12 @@ const TasksPage = () => {
     return usersMap[assignedToId] || "Unknown";
   };
 
-  const TaskCard = ({ task }: { task: Task }) => (
-    <View style={styles.taskCard}>
-      <View style={styles.taskContent}>
-        <CustomCheckbox
-          status={task.completed ? 'checked' : 'unchecked'}
-          onPress={() => toggleTask(task.id)}
-        />
-        <View style={{ flex: 1 }}>
-          <Text variant="titleMedium" style={styles.taskTitle}>
-            {task.title}
-          </Text>
-          <Text
-            variant="bodyLarge"
-            style={[styles.taskText, task.completed && styles.completedTask]}
-          >
-            {task.text}
-          </Text>
-        </View>
-        <Text style={styles.pointsText}>
-          {task.points ?? 0} pts
-        </Text>
-        <IconButton
-          icon={() => <AntDesign name="close" size={20} color="#666" />}
-          size={20}
-          onPress={() => deleteTask(task.id)}
-          style={styles.deleteButton}
-        />
-      </View>
-      <Divider />
-      <View style={styles.reassignButtonContainer}>
-        <Button
-          mode="outlined"
-          style={{ marginRight: 8 }}
-          onPress={() => {
-            setReassignTaskId(task.id);
-            setReassignModalVisible(true);
-          }}
-        >
-          {getAssignedUserName(task.assignedToId)}
-        </Button>
-      </View>
-    </View>
-  );
+
 
   const renderCompletedSection = () => {
     if (completedTasks.length === 0) {
       return null;
     }
-
     return (
       <View style={styles.completedSection}>
         <TouchableOpacity
@@ -463,6 +390,9 @@ const TasksPage = () => {
                 onToggleSubtask={toggleSubtask}
                 onDeleteSubtask={deleteSubtask}
                 onEditSubtask={editSubtask}
+                assignedUserName={getAssignedUserName(task.assignedToId)}
+                onReassign={handleReassign}
+                isReassignLoading={reassignLoading}
               />
             ))}
           </View>
@@ -493,6 +423,9 @@ const TasksPage = () => {
             onToggleSubtask={toggleSubtask}
             onDeleteSubtask={deleteSubtask}
             onEditSubtask={editSubtask}
+            assignedUserName={getAssignedUserName(item.assignedToId)}
+            onReassign={handleReassign}
+            isReassignLoading={reassignLoading}
           />
         )}
         style={styles.tasksList}
@@ -532,39 +465,7 @@ const TasksPage = () => {
         isAssignLoading={isAssignLoading}
       />
 
-      {/* Modal for reassigning a task */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={reassignModalVisible}
-        onRequestClose={() => setReassignModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Reassign Task</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Assign to (email, optional)"
-              value={reassignEmail}
-              onChangeText={setReassignEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <View style={styles.modalButtons}>
-              <Button
-                mode="contained"
-                onPress={handleReassign}
-                disabled={reassignLoading}
-              >
-                {reassignLoading ? "Assigning..." : "Change Assignment"}
-              </Button>
-              <Button mode="outlined" onPress={() => setReassignModalVisible(false)} style={{ marginLeft: 10 }}>
-                Cancel
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
+
     </KeyboardAvoidingView>
   );
 };
