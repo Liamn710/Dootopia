@@ -1,13 +1,14 @@
 import { signOut, deleteUser as firebaseDeleteUser,sendPasswordResetEmail } from 'firebase/auth';
 import React from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text, Button, Avatar } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import { useRouter } from 'expo-router';
 import { deleteUser as deleteUserApi, getMongoUserByFirebaseId } from '../../backend/api';
 
 const ProfilePage = () => {
   const router = useRouter();
+
 
   const handleSignOut = async () => {
     try {
@@ -57,8 +58,16 @@ const ProfilePage = () => {
     }
   };
 
+  const onAvatarPress = () => {
+    //go to store page at the moment
+    router.push("/screens/StorePage");
+  };
+
   return (
     <View style={styles.container}>
+      <TouchableOpacity onPress={onAvatarPress}>
+        <Avatar.Image size={100} source={{ uri: 'https://gravatar.com/avatar/0afa0df4b91f1d47fe6e607745d35b36?s=400&d=robohash&r=x' }} />
+      </TouchableOpacity>
       <Text variant="headlineMedium">Profile Page</Text>
       <Text>User profile content will go here</Text>
       <Button mode="contained" onPress={handleSignOut} style={{ marginTop: 20 }}>
@@ -83,4 +92,7 @@ const styles = StyleSheet.create({
   },
 });
 
+
 export default ProfilePage;
+
+

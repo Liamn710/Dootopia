@@ -1,9 +1,6 @@
 import axios from 'axios';
-
-const API_URL = 'http://192.168.1.196:3000'; // Adjust the URL as needed
-
-
-// User API*************************************************************************** 
+const API_URL = 'http://10.100.102.131:3000'; // Adjust the URL as needed
+// User API   *************************************************************************** 
 export async function getUsers() {
     const response = await axios.get(`${API_URL}/users`);
     if (response.status === 200) {

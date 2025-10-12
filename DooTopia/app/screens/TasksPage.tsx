@@ -27,10 +27,19 @@ type Task = {
   expanded: boolean;
   assignedToId?: string;
 };
+import { useCallback, useEffect, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Text } from 'react-native-paper';
+import { auth } from '../../FirebaseConfig';
+import { createTask,deleteTask as deleteTaskApi,deleteSubtask as deleteSubtaskApi ,getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
+import AddTaskModal from '../components/AddTaskModal';
+import TaskCard from '../components/TaskCard';
+import type { Subtask } from '../types/Subtask';
+import type { Task, TaskDictionary } from '../types/Task';
 
 const TasksPage = () => {
-  const [tasks, setTasks] = useState<{ [id: string]: Task }>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [tasks, setTasks] = useState<TaskDictionary>({});
+  // Removed loading animation/state
   const [mongoUserId, setMongoUserId] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
@@ -108,7 +117,6 @@ const TasksPage = () => {
       return;
     }
     try {
-      setIsLoading(true);
       const data = await getTasks();
       if (!Array.isArray(data)) {
         throw new Error('Unexpected response when fetching tasks');
@@ -132,13 +140,13 @@ const TasksPage = () => {
             assignedToId: task.assignedToId, // <-- add this line
           };
           return acc;
-        }, {} as { [id: string]: Task });
+        }, {} as TaskDictionary);
 
       setTasks(formattedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     } finally {
-      setIsLoading(false);
+      // no loading state to update
     }
   }, [mongoUserId]);
 
@@ -202,11 +210,10 @@ const TasksPage = () => {
     setAssignEmail('');
     setIsAssignLoading(false);
   };
-
   const addSubtask = (taskId: string) => { 
     const newSubtask: Subtask = {
       id: Date.now().toString(),
-      text: 'New Subtask',
+      text: 'Tap to add subtask',
       completed: false,
     };
 
@@ -253,7 +260,7 @@ const TasksPage = () => {
   });
 };
 
-
+  //
   const toggleSubtask = (taskId: string, subtaskId: string) => {
     setTasks(prevTasks => {
       const task = prevTasks[taskId];
@@ -289,18 +296,46 @@ const TasksPage = () => {
     });
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks(prevTasks => {
-      const { [taskId]: deletedTask, ...remainingTasks } = prevTasks;
-      return remainingTasks;
-    });
+  //TODO : Make asyc in order to delete from backend as well as make it const
+  const deleteTask = async (taskId: string) => {
+    try {
+      await deleteTaskApi(taskId);
+      setTasks(prev => {
+        const { [taskId]: _removed, ...rest } = prev;
+        return rest;
+      });
+    } catch (err) {
+      console.error('Failed to delete task', err);
+    }
   };
 
-  const deleteSubtask = (taskId: string, subtaskId: string) => {
+  //TODO : Make asyc in order to delete from backend as well as make it const
+  const deleteSubtask = async (taskId: string, subtaskId: string) => {
+    try {
+      await deleteSubtaskApi(subtaskId);
+      setTasks(prev => {
+        const task = prev[taskId];
+        if (!task) return prev;
+        return {
+          ...prev,
+          [taskId]: {
+            ...task,
+            subtasks: task.subtasks.filter(subtask => subtask.id !== subtaskId),
+          },
+        };
+      });
+    } catch (err) {
+      console.error('Failed to delete subtask', err);
+    }
+  };
+
+  const editSubtask = (taskId: string, subtaskId: string, newText: string) => {
     setTasks(prevTasks => {
       const task = prevTasks[taskId];
       if (task) {
-        const updatedSubtasks = task.subtasks.filter(subtask => subtask.id !== subtaskId);
+        const updatedSubtasks = task.subtasks.map(subtask =>
+          subtask.id === subtaskId ? { ...subtask, text: newText } : subtask
+        );
         return {
           ...prevTasks,
           [taskId]: {
@@ -418,7 +453,17 @@ const TasksPage = () => {
         {showCompleted && (
           <View style={styles.completedList}>
             {completedTasks.map(task => (
-              <TaskCard key={task.id} task={task} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                onToggleComplete={toggleTask}
+                onDelete={deleteTask}
+                onToggleExpansion={toggleExpansion}
+                onAddSubtask={addSubtask}
+                onToggleSubtask={toggleSubtask}
+                onDeleteSubtask={deleteSubtask}
+                onEditSubtask={editSubtask}
+              />
             ))}
           </View>
         )}
@@ -435,33 +480,38 @@ const TasksPage = () => {
     >
       <Text variant="headlineMedium" style={styles.title}>Tasks Page</Text>
 
-      {isLoading ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#5A8A93" />
-        </View>
-      ) : (
-        <FlatList
-          data={incompleteTasks}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <TaskCard task={item} />}
-          style={styles.tasksList}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            noTasks ? (
-              <Text style={styles.emptyState}>No tasks yet. Add your first one!</Text>
-            ) : null
-          }
-          ListFooterComponent={renderCompletedSection}
-        />
-      )}
+      <FlatList
+        data={incompleteTasks}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TaskCard
+            task={item}
+            onToggleComplete={toggleTask}
+            onDelete={deleteTask}
+            onToggleExpansion={toggleExpansion}
+            onAddSubtask={addSubtask}
+            onToggleSubtask={toggleSubtask}
+            onDeleteSubtask={deleteSubtask}
+            onEditSubtask={editSubtask}
+          />
+        )}
+        style={styles.tasksList}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          noTasks ? (
+            <Text style={styles.emptyState}>No tasks yet. Add your first one!</Text>
+          ) : null
+        }
+        ListFooterComponent={renderCompletedSection}
+      />
 
       {/* Add Task Button */}
       <Button
         mode="contained"
         style={styles.addTaskButton}
         onPress={() => setModalVisible(true)}
-        icon="plus"
+        icon={() => <AntDesign name="plus" size={20} color="#fff" />}
       >
         Add Task
       </Button>
@@ -525,17 +575,6 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#D6ECF2',
   },
-  taskTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 2,
-  },
-  pointsText: {
-    marginLeft: 8,
-    color: '#5A8A93',
-    fontWeight: '600',
-    alignSelf: 'center',
-  },
   title: {
     textAlign: 'center',
     marginBottom: 20,
@@ -544,41 +583,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 10,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  // loaderContainer removed
   emptyState: {
     textAlign: 'center',
     color: '#5A8A93',
     marginTop: 40,
-  },
-  taskCard: {
-    marginBottom: 8,
-    elevation: 2,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 8,
-    shadowColor: "#5A8A93",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-  },
-  taskContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  taskText: {
-    flex: 1,
-    marginLeft: 8,
-  },
-  completedTask: {
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
-  },
-  deleteButton: {
-    margin: 0,
   },
   addTaskButton: {
     marginTop: 10,
