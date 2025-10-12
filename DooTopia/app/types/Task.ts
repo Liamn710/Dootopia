@@ -8,6 +8,8 @@ export interface Task {
 	completed: boolean;
 	subtasks: Subtask[];
 	expanded: boolean;
+	assignedToId?: string;
+
 }
 
 export interface TaskDictionary {
