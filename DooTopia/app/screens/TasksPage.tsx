@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platfo
 import { Button, Divider, IconButton, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser, getUsers, getMongoUserByEmail } from '../../backend/api';
+import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser, getUsers, getMongoUserByEmail, createUser } from '../../backend/api';
 import CustomCheckbox from '../components/CustomCheckbox';
 import AddTaskModal from '../components/AddTaskModal';
 import { deleteTask as deleteTaskApi,deleteSubtask as deleteSubtaskApi} from '../../backend/api';
@@ -15,8 +15,8 @@ import type { Task, TaskDictionary } from '../types/Task';
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState<TaskDictionary>({});
-  // Removed loading animation/state
   const [mongoUserId, setMongoUserId] = useState<string>('');
+  const [mongoUserLoading, setMongoUserLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskText, setTaskText] = useState('');
@@ -47,25 +47,46 @@ const TasksPage = () => {
 
   // Fetch Mongo user when userId changes
   useEffect(() => {
-    const fetchMongoUser = async () => {
+    const fetchOrCreateMongoUser = async () => {
+      setMongoUserLoading(true);
       if (userId) {
         try {
-          const mongoUser = await getMongoUserByFirebaseId(userId);
-          if (mongoUser && mongoUser._id) {
-            setMongoUserId(mongoUser._id);
+          let mongoUser = await getMongoUserByFirebaseId(userId);
+          if (!mongoUser || !mongoUser._id) {
+            // Try to get Firebase user info
+            const firebaseUser = auth.currentUser;
+            if (firebaseUser) {
+              // Compose new user object for Mongo
+              const newUser = {
+                firebaseUserId: firebaseUser.uid,
+                name: firebaseUser.displayName || firebaseUser.email || 'Unnamed User',
+                email: firebaseUser.email || '',
+                // Add any other default fields you want here
+              };
+              mongoUser = await createUser(newUser);
+              if (mongoUser && mongoUser._id) {
+                setMongoUserId(mongoUser._id);
+              } else {
+                setMongoUserId('');
+                console.error('Failed to create Mongo user:', mongoUser);
+              }
+            } else {
+              setMongoUserId('');
+              console.error('No Firebase user found for Mongo user creation.');
+            }
           } else {
-            setMongoUserId('');
-            console.error('Mongo user not found or missing _id:', mongoUser);
+            setMongoUserId(mongoUser._id);
           }
         } catch (error) {
           setMongoUserId('');
-          console.error('Error fetching MongoDB user:', error);
+          console.error('Error fetching or creating MongoDB user:', error);
         }
       } else {
         setMongoUserId('');
       }
+      setMongoUserLoading(false);
     };
-    fetchMongoUser();
+    fetchOrCreateMongoUser();
   }, [userId]);
 
   useEffect(() => {
@@ -123,11 +144,14 @@ const TasksPage = () => {
     }
   }, [mongoUserId]);
 
+  // Only fetch tasks after mongoUserId is loaded and not loading
   useFocusEffect(
     useCallback(() => {
-      fetchTasks();
+      if (!mongoUserLoading && mongoUserId) {
+        fetchTasks();
+      }
       return undefined;
-    }, [fetchTasks])
+    }, [fetchTasks, mongoUserId, mongoUserLoading])
   );
 
   const addTask = async (emailToAssign: string) => {
@@ -402,6 +426,15 @@ const TasksPage = () => {
   };
 
 
+  if (mongoUserLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}> 
+        <ActivityIndicator size="large" color="#5A8A93" />
+        <Text style={{ marginTop: 16, color: '#5A8A93' }}>Loading your account...</Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
@@ -464,7 +497,6 @@ const TasksPage = () => {
         setAssignEmail={setAssignEmail}
         isAssignLoading={isAssignLoading}
       />
-
 
     </KeyboardAvoidingView>
   );

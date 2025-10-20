@@ -48,6 +48,8 @@ export default function HomeScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          returnKeyType="done"
+          onSubmitEditing={signIn}
         />
         <TouchableOpacity style={styles.button} onPress={signIn}>
           <Text style={styles.buttonText}>Log In</Text>
