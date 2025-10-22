@@ -1,14 +1,12 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { Button, Divider, IconButton, Text } from 'react-native-paper';
-import { auth } from '../../FirebaseConfig';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser, getUsers, getMongoUserByEmail, createUser } from '../../backend/api';
-import CustomCheckbox from '../components/CustomCheckbox';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Text } from 'react-native-paper';
+import { createTask, createUser, deleteSubtask as deleteSubtaskApi, deleteTask as deleteTaskApi, getMongoUserByEmail, getMongoUserByFirebaseId, getTasks, getUsers, updateTask, updateUser } from '../../backend/api';
+import { auth } from '../../FirebaseConfig';
 import AddTaskModal from '../components/AddTaskModal';
-import { deleteTask as deleteTaskApi,deleteSubtask as deleteSubtaskApi} from '../../backend/api';
 import TaskCard from '../components/TaskCard';
 import type { Subtask } from '../types/Subtask';
 import type { Task, TaskDictionary } from '../types/Task';
@@ -27,6 +25,7 @@ const TasksPage = () => {
   const [reassignLoading, setReassignLoading] = useState(false);
   const [usersMap, setUsersMap] = useState<{ [id: string]: string }>({});
   const [userId, setUserId] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState('');
   const tasksArray: Task[] = Object.values(tasks);
   const incompleteTasks = tasksArray.filter(task => !task.completed);
   const completedTasks = tasksArray.filter(task => task.completed);
@@ -181,7 +180,8 @@ const TasksPage = () => {
       createdAt: new Date().toISOString(),
       points: Number(taskPoints),
       userId: mongoUserId,
-      assignedToId: assignToId // <-- use assignedToId here
+      assignedToId: assignToId,
+      dueDate: dueDate || undefined,
     };
 
     const result = await createTask(taskObject);
@@ -194,7 +194,8 @@ const TasksPage = () => {
       completed: false,
       subtasks: [],
       expanded: false,
-      assignedToId: result.assignedToId, // <-- add this line
+      assignedToId: result.assignedToId,
+      dueDate: result.dueDate || undefined,
     };
     setTasks(prevTasks => ({
       ...prevTasks,
@@ -206,6 +207,7 @@ const TasksPage = () => {
     setTaskPoints('');
     setAssignEmail('');
     setIsAssignLoading(false);
+    setDueDate('');
   };
   const addSubtask = (taskId: string) => { 
     const newSubtask: Subtask = {
@@ -496,6 +498,8 @@ const TasksPage = () => {
         assignEmail={assignEmail}
         setAssignEmail={setAssignEmail}
         isAssignLoading={isAssignLoading}
+        dueDate={dueDate} // Pass dueDate
+        setDueDate={setDueDate} // Pass setter
       />
 
     </KeyboardAvoidingView>
