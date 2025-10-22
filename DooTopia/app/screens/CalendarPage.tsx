@@ -2,24 +2,47 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Text } from 'react-native-paper';
-import { getTasks } from '../../backend/api';
+import { getMongoUserByFirebaseId, getTasks } from '../../backend/api';
+import { auth } from '../../FirebaseConfig';
 
 const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [tasks, setTasks] = useState<any[]>([]);
   const [tasksForDate, setTasksForDate] = useState<any[]>([]);
+  const [mongoUserId, setMongoUserId] = useState<string>('');
+
+  // Get current user's MongoDB ID
+  useEffect(() => {
+    const fetchMongoUserId = async () => {
+      const firebaseUser = auth.currentUser;
+      if (firebaseUser) {
+        const mongoUser = await getMongoUserByFirebaseId(firebaseUser.uid);
+        if (mongoUser && mongoUser._id) {
+          setMongoUserId(mongoUser._id);
+        }
+      }
+    };
+    fetchMongoUserId();
+  }, []);
 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
         const data = await getTasks();
-        setTasks(data);
+        // Only show tasks created by or assigned to the current user
+        const filtered = data.filter(
+          (task: any) =>
+            task.userId === mongoUserId || task.assignedToId === mongoUserId
+        );
+        setTasks(filtered);
       } catch (error) {
         console.error('Error fetching tasks:', error);
       }
     };
-    fetchTasks();
-  }, []);
+    if (mongoUserId) {
+      fetchTasks();
+    }
+  }, [mongoUserId]);
 
   const handleDayPress = (day: any) => {
     setSelectedDate(day.dateString);
@@ -43,9 +66,6 @@ const CalendarPage = () => {
         customStyles: {
           container: {},
           text: {},
-          // Add a custom text below the day number
-          // react-native-calendars doesn't support subtitle directly,
-          // but you can use dots or custom styles.
         },
         dots: [
           {
@@ -54,13 +74,11 @@ const CalendarPage = () => {
             selectedDotColor: '#5A8A93'
           }
         ],
-        // Optionally, highlight selected date
         ...(selectedDate === dateKey && { selected: true, selectedColor: 'blue' })
       };
     }
   });
 
-  // If you want to show the title, use dayComponent prop:
   const renderDay = ({ date, state }) => {
     const dateString = date.dateString;
     const dayTasks = tasks.filter(
