@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Modal, StyleSheet, TextInput, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useState } from 'react';
+import { Modal, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { Button, Menu, Portal, Text } from 'react-native-paper';
 interface AddTaskModalProps {
   visible: boolean;
@@ -14,12 +15,16 @@ interface AddTaskModalProps {
   assignEmail: string;
   setAssignEmail: (v: string) => void;
   isAssignLoading: boolean;
+  dueDate: string;
+  setDueDate: (v: string) => void;
 }
 
-const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints, assignEmail, setAssignEmail }: AddTaskModalProps) => {
+const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints, assignEmail, setAssignEmail, dueDate, setDueDate }: AddTaskModalProps) => {
   const [pointsMenuVisible, setPointsMenuVisible] = useState(false);
   const [menuWidth, setMenuWidth] = useState<number | undefined>(undefined);
   const [descriptionHeight, setDescriptionHeight] = useState(120);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
 
   const openPointsMenu = () => setPointsMenuVisible(true);
   const closePointsMenu = () => setPointsMenuVisible(false);
@@ -63,6 +68,37 @@ const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskTe
               autoCapitalize="none"
               keyboardType="email-address"
             />
+            {Platform.OS === 'web' ? (
+  <input
+    type="date"
+    style={{ ...styles.input, padding: 8, fontSize: 16 }}
+    value={dueDate ? dueDate.substring(0, 10) : ''}
+    onChange={e => setDueDate(e.target.value)}
+  />
+) : (
+  <>
+    <TextInput
+      style={styles.input}
+      placeholder="Due Date"
+      value={dueDate ? new Date(dueDate).toLocaleDateString() : ''}
+      onFocus={() => setShowDatePicker(true)}
+      editable={false}
+    />
+    {showDatePicker && (
+      <DateTimePicker
+        value={dueDate ? new Date(dueDate) : new Date()}
+        mode="date"
+        display="spinner"
+        onChange={(event, selectedDate) => {
+          setShowDatePicker(false);
+          if (selectedDate) {
+            setDueDate(selectedDate.toISOString());
+          }
+        }}
+      />
+    )}
+  </>
+)}
             <Text style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
               Leave blank to assign to yourself
             </Text>

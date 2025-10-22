@@ -34,7 +34,8 @@ taskRoutes.route("/tasks").post(async (request, response) => {
         createdAt: request.body.createdAt,
         points: request.body.points,
         userId: request.body.userId,
-        assignedToId: request.body.assignedToId
+        assignedToId: request.body.assignedToId,
+        dueDate: request.body.dueDate
     };
     let data = await db.collection("tasks").insertOne(mongoObject);
 

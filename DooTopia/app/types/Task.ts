@@ -9,7 +9,7 @@ export interface Task {
 	subtasks: Subtask[];
 	expanded: boolean;
 	assignedToId?: string;
-
+	dueDate?: string;
 }
 
 export interface TaskDictionary {

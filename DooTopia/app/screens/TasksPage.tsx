@@ -1,14 +1,12 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { Button, Divider, IconButton, Text } from 'react-native-paper';
-import { auth } from '../../FirebaseConfig';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { createTask, getMongoUserByFirebaseId, getTasks, updateTask, updateUser, getUsers, getMongoUserByEmail, createUser } from '../../backend/api';
-import CustomCheckbox from '../components/CustomCheckbox';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Text } from 'react-native-paper';
+import { createTask, createUser, deleteSubtask as deleteSubtaskApi, deleteTask as deleteTaskApi, getMongoUserByEmail, getMongoUserByFirebaseId, getTasks, getUsers, updateTask, updateUser } from '../../backend/api';
+import { auth } from '../../FirebaseConfig';
 import AddTaskModal from '../components/AddTaskModal';
-import { deleteTask as deleteTaskApi,deleteSubtask as deleteSubtaskApi} from '../../backend/api';
 import TaskCard from '../components/TaskCard';
 import type { Subtask } from '../types/Subtask';
 import type { Task, TaskDictionary } from '../types/Task';
@@ -27,6 +25,9 @@ const TasksPage = () => {
   const [reassignLoading, setReassignLoading] = useState(false);
   const [usersMap, setUsersMap] = useState<{ [id: string]: string }>({});
   const [userId, setUserId] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState('');
+  const [editingDueDateTaskId, setEditingDueDateTaskId] = useState<string | null>(null);
+  const [newDueDate, setNewDueDate] = useState<string>('');
   const tasksArray: Task[] = Object.values(tasks);
   const incompleteTasks = tasksArray.filter(task => !task.completed);
   const completedTasks = tasksArray.filter(task => task.completed);
@@ -131,7 +132,8 @@ const TasksPage = () => {
             completed: Boolean(task.completed),
             subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
             expanded: false,
-            assignedToId: task.assignedToId, // <-- add this line
+            assignedToId: task.assignedToId,
+            dueDate: task.dueDate, // <-- ADD THIS LINE
           };
           return acc;
         }, {} as TaskDictionary);
@@ -181,7 +183,8 @@ const TasksPage = () => {
       createdAt: new Date().toISOString(),
       points: Number(taskPoints),
       userId: mongoUserId,
-      assignedToId: assignToId // <-- use assignedToId here
+      assignedToId: assignToId,
+      dueDate: dueDate || undefined,
     };
 
     const result = await createTask(taskObject);
@@ -194,7 +197,8 @@ const TasksPage = () => {
       completed: false,
       subtasks: [],
       expanded: false,
-      assignedToId: result.assignedToId, // <-- add this line
+      assignedToId: result.assignedToId,
+      dueDate: result.dueDate || undefined,
     };
     setTasks(prevTasks => ({
       ...prevTasks,
@@ -206,6 +210,7 @@ const TasksPage = () => {
     setTaskPoints('');
     setAssignEmail('');
     setIsAssignLoading(false);
+    setDueDate('');
   };
   const addSubtask = (taskId: string) => { 
     const newSubtask: Subtask = {
@@ -345,7 +350,22 @@ const TasksPage = () => {
     });
   };  
   
-
+  const handleDueDateUpdate = async (taskId: string, dueDate: string) => {
+    try {
+      await updateTask(taskId, { dueDate });
+      setTasks(prevTasks => ({
+        ...prevTasks,
+        [taskId]: {
+          ...prevTasks[taskId],
+          dueDate,
+        }
+      }));
+      setEditingDueDateTaskId(null);
+      setNewDueDate('');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update due date.');
+    }
+  };
 
   // Assignment handler for TaskCard
   const handleReassign = async (taskId: string, email: string) => {
@@ -459,6 +479,15 @@ const TasksPage = () => {
             assignedUserName={getAssignedUserName(item.assignedToId)}
             onReassign={handleReassign}
             isReassignLoading={reassignLoading}
+            // Add these props:
+            onEditDueDate={(taskId: string) => {
+              setEditingDueDateTaskId(taskId);
+              setNewDueDate(tasks[taskId]?.dueDate?.substring(0, 10) || '');
+            }}
+            editingDueDateTaskId={editingDueDateTaskId}
+            newDueDate={newDueDate}
+            setNewDueDate={setNewDueDate}
+            handleDueDateUpdate={handleDueDateUpdate}
           />
         )}
         style={styles.tasksList}
@@ -496,6 +525,8 @@ const TasksPage = () => {
         assignEmail={assignEmail}
         setAssignEmail={setAssignEmail}
         isAssignLoading={isAssignLoading}
+        dueDate={dueDate} // Pass dueDate
+        setDueDate={setDueDate} // Pass setter
       />
 
     </KeyboardAvoidingView>
