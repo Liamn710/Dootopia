@@ -26,6 +26,8 @@ const TasksPage = () => {
   const [usersMap, setUsersMap] = useState<{ [id: string]: string }>({});
   const [userId, setUserId] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState('');
+  const [editingDueDateTaskId, setEditingDueDateTaskId] = useState<string | null>(null);
+  const [newDueDate, setNewDueDate] = useState<string>('');
   const tasksArray: Task[] = Object.values(tasks);
   const incompleteTasks = tasksArray.filter(task => !task.completed);
   const completedTasks = tasksArray.filter(task => task.completed);
@@ -130,7 +132,8 @@ const TasksPage = () => {
             completed: Boolean(task.completed),
             subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
             expanded: false,
-            assignedToId: task.assignedToId, // <-- add this line
+            assignedToId: task.assignedToId,
+            dueDate: task.dueDate, // <-- ADD THIS LINE
           };
           return acc;
         }, {} as TaskDictionary);
@@ -347,7 +350,22 @@ const TasksPage = () => {
     });
   };  
   
-
+  const handleDueDateUpdate = async (taskId: string, dueDate: string) => {
+    try {
+      await updateTask(taskId, { dueDate });
+      setTasks(prevTasks => ({
+        ...prevTasks,
+        [taskId]: {
+          ...prevTasks[taskId],
+          dueDate,
+        }
+      }));
+      setEditingDueDateTaskId(null);
+      setNewDueDate('');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update due date.');
+    }
+  };
 
   // Assignment handler for TaskCard
   const handleReassign = async (taskId: string, email: string) => {
@@ -461,6 +479,15 @@ const TasksPage = () => {
             assignedUserName={getAssignedUserName(item.assignedToId)}
             onReassign={handleReassign}
             isReassignLoading={reassignLoading}
+            // Add these props:
+            onEditDueDate={(taskId: string) => {
+              setEditingDueDateTaskId(taskId);
+              setNewDueDate(tasks[taskId]?.dueDate?.substring(0, 10) || '');
+            }}
+            editingDueDateTaskId={editingDueDateTaskId}
+            newDueDate={newDueDate}
+            setNewDueDate={setNewDueDate}
+            handleDueDateUpdate={handleDueDateUpdate}
           />
         )}
         style={styles.tasksList}

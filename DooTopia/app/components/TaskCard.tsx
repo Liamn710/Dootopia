@@ -9,8 +9,8 @@
 
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Modal, TextInput } from 'react-native';
-import { IconButton, Text, Button } from 'react-native-paper';
+import { Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Button, IconButton, Text } from 'react-native-paper';
 import type { Subtask } from '../types/Subtask';
 import type { Task } from '../types/Task';
 import CustomCheckbox from './CustomCheckbox';
@@ -27,6 +27,11 @@ interface TaskCardProps {
   assignedUserName?: string;
   onReassign?: (taskId: string, email: string) => Promise<void>;
   isReassignLoading?: boolean;
+  onEditDueDate: (taskId: string) => void;
+  editingDueDateTaskId: string | null;
+  newDueDate: string;
+  setNewDueDate: (date: string) => void;
+  handleDueDateUpdate: (taskId: string, dueDate: string) => void;
 }
 
 // Move styles above component so it is available when TaskCard is defined
@@ -162,13 +167,13 @@ const styles = StyleSheet.create({
 });
 
 
-const TaskCard = ({ task, onToggleComplete, onDelete, onToggleExpansion, onAddSubtask, onToggleSubtask, onDeleteSubtask, onEditSubtask, assignedUserName, onReassign, isReassignLoading }: TaskCardProps) => {
+const TaskCard = ({ task, ...props }: TaskCardProps) => {
   // Assignment modal state
   const [reassignModalVisible, setReassignModalVisible] = useState(false);
   const [reassignEmail, setReassignEmail] = useState('');
   const handleReassign = async () => {
-    if (onReassign) {
-      await onReassign(task.id, reassignEmail);
+    if (props.onReassign) {
+      await props.onReassign(task.id, reassignEmail);
       setReassignModalVisible(false);
       setReassignEmail('');
     }
@@ -185,7 +190,7 @@ const TaskCard = ({ task, onToggleComplete, onDelete, onToggleExpansion, onAddSu
 
   const handleSaveSubtask = (subtaskId: string) => {
     const finalText = tempSubtaskText.trim() || 'Tap to add subtask';
-    onEditSubtask(task.id, subtaskId, finalText);
+    props.onEditSubtask(task.id, subtaskId, finalText);
     setEditingSubtaskId('');
     setTempSubtaskText('');
   };
@@ -197,19 +202,67 @@ const TaskCard = ({ task, onToggleComplete, onDelete, onToggleExpansion, onAddSu
 
   return (
     <View style={styles.taskCard}>
-      <TouchableOpacity 
-        style={styles.taskContent}
-        onPress={() => onToggleExpansion(task.id)}
-        activeOpacity={0.7}
-      >
+      <View style={styles.taskContent}>
         <CustomCheckbox
           status={task.completed ? 'checked' : 'unchecked'}
-          onPress={() => onToggleComplete(task.id)}
+          onPress={() => props.onToggleComplete(task.id)}
         />
         <View style={{ flex: 1 }}>
-          <Text variant="titleMedium" style={styles.taskTitle}>
-            {task.title}
-          </Text>
+          <TouchableOpacity
+            onPress={() => props.onToggleExpansion(task.id)}
+            activeOpacity={0.7}
+          >
+            <Text variant="titleMedium" style={styles.taskTitle}>
+              {task.title}
+            </Text>
+          </TouchableOpacity>
+          {/* Show due date below the title */}
+          {task.dueDate && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <Text style={{ fontSize: 12, color: '#5A8A93' }}>
+                Due: {new Date(task.dueDate).toLocaleDateString()}
+              </Text>
+              {task.expanded && (
+                props.editingDueDateTaskId === task.id ? (
+                  <>
+                    <TextInput
+                      style={[styles.input, { width: 120, fontSize: 12, marginLeft: 8 }]}
+                      value={props.newDueDate}
+                      onChangeText={props.setNewDueDate}
+                      placeholder="YYYY-MM-DD"
+                    />
+                    <Button
+                      mode="contained"
+                      compact
+                      style={{ marginLeft: 4 }}
+                      onPress={() => props.handleDueDateUpdate(task.id, props.newDueDate)}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      mode="text"
+                      compact
+                      style={{ marginLeft: 4 }}
+                      onPress={() => props.onEditDueDate('')}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  !task.completed && (
+                    <Button
+                      mode="text"
+                      compact
+                      style={{ marginLeft: 8 }}
+                      onPress={() => props.onEditDueDate(task.id)}
+                    >
+                      Edit
+                    </Button>
+                  )
+                )
+              )}
+            </View>
+          )}
           {task.expanded && task.text && (
             <Text
               variant="bodyLarge"
@@ -225,10 +278,10 @@ const TaskCard = ({ task, onToggleComplete, onDelete, onToggleExpansion, onAddSu
         <IconButton
           icon={() => <AntDesign name="close" size={20} color="#666" />}
           size={20}
-          onPress={() => onDelete(task.id)}
+          onPress={() => props.onDelete(task.id)}
           style={styles.deleteButton}
         />
-      </TouchableOpacity>
+      </View>
 
       {/* Assignment Button */}
       <View style={styles.assignmentRow}>
@@ -237,7 +290,7 @@ const TaskCard = ({ task, onToggleComplete, onDelete, onToggleExpansion, onAddSu
           style={{ marginRight: 8 }}
           onPress={() => setReassignModalVisible(true)}
         >
-          {assignedUserName || 'Assign'}
+          {props.assignedUserName || 'Assign'}
         </Button>
       </View>
 
@@ -263,9 +316,9 @@ const TaskCard = ({ task, onToggleComplete, onDelete, onToggleExpansion, onAddSu
               <Button
                 mode="contained"
                 onPress={handleReassign}
-                disabled={isReassignLoading}
+                disabled={props.isReassignLoading}
               >
-                {isReassignLoading ? "Assigning..." : "Change Assignment"}
+                {props.isReassignLoading ? "Assigning..." : "Change Assignment"}
               </Button>
               <Button mode="outlined" onPress={() => setReassignModalVisible(false)} style={{ marginLeft: 10 }}>
                 Cancel
@@ -283,7 +336,7 @@ const TaskCard = ({ task, onToggleComplete, onDelete, onToggleExpansion, onAddSu
               <IconButton
                 icon={() => <AntDesign name="plus" size={16} color="#5A8A93" />}
                 size={20}
-                onPress={() => onAddSubtask(task.id)}
+                onPress={() => props.onAddSubtask(task.id)}
                 style={styles.addSubtaskButton}
               />
             </View>
@@ -291,7 +344,7 @@ const TaskCard = ({ task, onToggleComplete, onDelete, onToggleExpansion, onAddSu
               <View key={subtask.id} style={styles.subtaskItem}>
                 <CustomCheckbox
                   status={subtask.completed ? 'checked' : 'unchecked'}
-                  onPress={() => onToggleSubtask(task.id, subtask.id)}
+                  onPress={() => props.onToggleSubtask(task.id, subtask.id)}
                 />
                 {editingSubtaskId === subtask.id ? (
                   <TextInput
@@ -319,7 +372,7 @@ const TaskCard = ({ task, onToggleComplete, onDelete, onToggleExpansion, onAddSu
                 <IconButton
                   icon={() => <AntDesign name="close" size={14} color="#666" />}
                   size={16}
-                  onPress={() => onDeleteSubtask(task.id, subtask.id)}
+                  onPress={() => props.onDeleteSubtask(task.id, subtask.id)}
                   style={styles.deleteSubtaskButton}
                 />
               </View>
