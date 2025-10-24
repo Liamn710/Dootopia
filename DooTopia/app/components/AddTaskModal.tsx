@@ -1,6 +1,6 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Modal, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button, Menu, Portal, Text } from 'react-native-paper';
 interface AddTaskModalProps {
   visible: boolean;
@@ -77,13 +77,14 @@ const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskTe
   />
 ) : (
   <>
-    <TextInput
+    <TouchableOpacity
       style={styles.input}
-      placeholder="Due Date"
-      value={dueDate ? new Date(dueDate).toLocaleDateString() : ''}
-      onFocus={() => setShowDatePicker(true)}
-      editable={false}
-    />
+      onPress={() => setShowDatePicker(true)}
+    >
+      <Text style={{ fontSize: 16, color: dueDate ? '#000' : '#999' }}>
+        {dueDate ? new Date(dueDate).toLocaleDateString() : 'Due Date'}
+      </Text>
+    </TouchableOpacity>
     {showDatePicker && (
       <DateTimePicker
         value={dueDate ? new Date(dueDate) : new Date()}
