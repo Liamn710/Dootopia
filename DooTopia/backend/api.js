@@ -1,5 +1,5 @@
 import axios from 'axios';
-const API_URL = 'http://192.168.1.112:3000'; // Adjust the URL as needed
+const API_URL = 'http://localhost:3000'; // Adjust the URL as needed
 // User API   *************************************************************************** 
 export async function getUsers() {
     const response = await axios.get(`${API_URL}/users`);
@@ -246,22 +246,30 @@ export async function getSubtaskById(id) {
 }
 
 export async function createSubtask(subtask) {
-    const response = await axios.post(`${API_URL}/subtasks`, subtask);
-    if (response.status === 201) {
-        return response.data;
-    }
-    else {
-        return { error: "Subtask creation failed" };
+    try {
+        const response = await axios.post(`${API_URL}/subtasks`, subtask);
+        if (response.status === 201) {
+            return response.data;
+        } else {
+            throw new Error('Failed to create subtask');
+        }
+    } catch (error) {
+        console.error('Error creating subtask:', error);
+        throw error;
     }
 }
 
 export async function updateSubtask(id, subtask) {
-    const response = await axios.put(`${API_URL}/subtasks/${id}`, subtask);
-    if (response.status === 200) {
-        return response.data;
-    }
-    else {
-        return { error: "Subtask update failed" };
+    try {
+        const response = await axios.put(`${API_URL}/subtasks/${id}`, subtask);
+        if (response.status === 200) {
+            return response.data;
+        } else {
+            throw new Error('Failed to update subtask');
+        }
+    } catch (error) {
+        console.error('Error updating subtask:', error);
+        throw error;
     }
 }
 

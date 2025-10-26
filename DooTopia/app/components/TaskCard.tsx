@@ -9,7 +9,7 @@
 
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useState } from 'react';
-import { Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button, IconButton, Text } from 'react-native-paper';
 import type { Subtask } from '../types/Subtask';
 import type { Task } from '../types/Task';
@@ -200,6 +200,9 @@ const TaskCard = ({ task, ...props }: TaskCardProps) => {
     setTempSubtaskText('');
   };
 
+  const [addingSubtask, setAddingSubtask] = useState(false);
+  const [newSubtaskText, setNewSubtaskText] = useState('');
+
   return (
     <View style={styles.taskCard}>
       <View style={styles.taskContent}>
@@ -331,15 +334,7 @@ const TaskCard = ({ task, ...props }: TaskCardProps) => {
       {task.expanded && (
         <View style={styles.expandedContent}>
           <View style={styles.subtasksSection}>
-            <View style={styles.subtasksHeader}>
-              <Text style={styles.subtasksTitle}>Subtasks</Text>
-              <IconButton
-                icon={() => <AntDesign name="plus" size={16} color="#5A8A93" />}
-                size={20}
-                onPress={() => props.onAddSubtask(task.id)}
-                style={styles.addSubtaskButton}
-              />
-            </View>
+            {/* Existing subtasks */}
             {task.subtasks.map((subtask: Subtask) => (
               <View key={subtask.id} style={styles.subtaskItem}>
                 <CustomCheckbox
@@ -377,6 +372,54 @@ const TaskCard = ({ task, ...props }: TaskCardProps) => {
                 />
               </View>
             ))}
+
+            {/* Add subtask input */}
+            {addingSubtask ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginRight: 8 }]}
+                  placeholder="Enter subtask text"
+                  value={newSubtaskText}
+                  onChangeText={setNewSubtaskText}
+                  autoFocus
+                />
+                <Button
+                  mode="contained"
+                  compact
+                  onPress={() => {
+                    if (newSubtaskText.trim()) {
+                      console.log('TaskCard: calling onAddSubtask with taskId:', task.id); // Debug log
+                      props.onAddSubtask(task.id, newSubtaskText);
+                      setNewSubtaskText('');
+                      setAddingSubtask(false);
+                    } else {
+                      Alert.alert('Error', 'Please enter subtask text');
+                    }
+                  }}
+                >
+                  OK
+                </Button>
+                <Button
+                  mode="text"
+                  compact
+                  onPress={() => {
+                    setAddingSubtask(false);
+                    setNewSubtaskText('');
+                  }}
+                >
+                  Cancel
+                </Button>
+              </View>
+            ) : (
+              <Button
+                mode="outlined"
+                onPress={() => setAddingSubtask(true)}
+                style={{ marginTop: 8 }}
+                icon={() => <AntDesign name="plus" size={16} color="#5A8A93" />}
+              >
+                Add Subtask
+              </Button>
+            )}
           </View>
         </View>
       )}
