@@ -1,15 +1,17 @@
+import { getMongoUserByFirebaseId, updateUser } from "@/backend/api";
+import { AntDesign } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from "react";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { auth } from "../../FirebaseConfig";
 import { StoreCard } from "../components/StoreCard";
-import { ScrollView, View ,Text,ActivityIndicator} from "react-native";
-import { useEffect,useState } from "react";
-import {auth} from "../../FirebaseConfig";
-import { getMongoUserByFirebaseId,updateUser } from "@/backend/api";
-
 
 export default function StorePage() {
-  const [userPoints, setUserPoints] = useState(150); // Example user points
+  const [userPoints, setUserPoints] = useState(150);
   const [mongoUserId, setMongoUserId] = useState("");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const loadUserPoints = async () => {
@@ -50,14 +52,36 @@ export default function StorePage() {
     }
   };
 
-    return (
+  return (
     <ScrollView contentContainerStyle={{ paddingVertical: 12 }}>
-      <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: "row", justifyContent: "space-between" }}>
-        <Text style={{ fontSize: 18, fontWeight: "600" }}>Store</Text>
+      {/* Header with back button */}
+      <View style={{ 
+        paddingHorizontal: 16, 
+        marginBottom: 12, 
+        flexDirection: "row", 
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <TouchableOpacity 
+            onPress={() => router.back()}
+            style={{ 
+              marginRight: 12,
+              padding: 8,
+              borderRadius: 20,
+              backgroundColor: '#f0f0f0'
+            }}
+          >
+            <AntDesign name="arrowleft" size={20} color="#2d6d73" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 18, fontWeight: "600" }}>Store</Text>
+        </View>
         <Text style={{ fontSize: 16, fontWeight: "500", color: "#2d6d73" }}>
           Points: {userPoints}{updating ? " ..." : ""}
         </Text>
       </View>
+
+      {/* Store items */}
       <View style={{ flexDirection: "row-reverse", flexWrap: "wrap", justifyContent: "space-around" }}>
         <StoreCard
           title="Premium Avatar"
