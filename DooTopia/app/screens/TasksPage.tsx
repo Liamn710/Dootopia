@@ -4,7 +4,21 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
-import { createTask, createUser, deleteSubtask as deleteSubtaskApi, deleteTask as deleteTaskApi, getMongoUserByEmail, getMongoUserByFirebaseId, getTasks, getUsers, updateTask, updateUser } from '../../backend/api';
+import {
+  createSubtask,
+  createTask,
+  createUser,
+  deleteSubtask as deleteSubtaskApi,
+  deleteTask as deleteTaskApi,
+  getMongoUserByEmail,
+  getMongoUserByFirebaseId,
+  getSubtasks,
+  getTasks,
+  getUsers,
+  updateSubtask, // Add this import
+  updateTask,
+  updateUser
+} from '../../backend/api';
 import { auth } from '../../FirebaseConfig';
 import AddTaskModal from '../components/AddTaskModal';
 import TaskCard from '../components/TaskCard';
@@ -112,28 +126,42 @@ const TasksPage = () => {
       return;
     }
     try {
-      const data = await getTasks();
-      if (!Array.isArray(data)) {
+      const [tasksData, subtasksData] = await Promise.all([
+        getTasks(),
+        getSubtasks() // Fetch all subtasks
+      ]);
+
+      if (!Array.isArray(tasksData)) {
         throw new Error('Unexpected response when fetching tasks');
       }
 
-      const formattedTasks = data
+      const formattedTasks = tasksData
         .filter(task => task.assignedToId === mongoUserId || task.userId === mongoUserId)
         .reduce((acc: { [id: string]: Task }, task: any) => {
           const taskId = task._id ?? task.id;
           if (!taskId) {
             return acc;
           }
+
+          // Find subtasks for this task
+          const taskSubtasks = subtasksData
+            .filter((subtask: any) => subtask.parentTaskId === taskId)
+            .map((subtask: any) => ({
+              id: subtask._id,
+              text: subtask.text || subtask.title,
+              completed: subtask.completed || false,
+            }));
+
           acc[taskId as string] = {
             id: taskId as string,
             title: task.title ?? 'Untitled Task',
             text: task.text ?? '',
             points: Number(task.points) || 0,
             completed: Boolean(task.completed),
-            subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
+            subtasks: taskSubtasks, // Use subtasks from MongoDB
             expanded: false,
             assignedToId: task.assignedToId,
-            dueDate: task.dueDate, // <-- ADD THIS LINE
+            dueDate: task.dueDate,
           };
           return acc;
         }, {} as TaskDictionary);
@@ -141,8 +169,6 @@ const TasksPage = () => {
       setTasks(formattedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
-    } finally {
-      // no loading state to update
     }
   }, [mongoUserId]);
 
@@ -212,26 +238,61 @@ const TasksPage = () => {
     setIsAssignLoading(false);
     setDueDate('');
   };
-  const addSubtask = (taskId: string) => { 
-    const newSubtask: Subtask = {
-      id: Date.now().toString(),
-      text: 'Tap to add subtask',
-      completed: false,
-    };
+  const addSubtask = async (taskId: string, subtaskText: string) => { 
+    if (!subtaskText.trim()) {
+      Alert.alert('Error', 'Please enter subtask text');
+      return;
+    }
 
-    setTasks(prevTasks => {
-      const task = prevTasks[taskId];
-      if (task) {
-        return {
-          ...prevTasks,
-          [taskId]: {
-            ...task,
-            subtasks: [...task.subtasks, newSubtask],
-          },
-        };
-      }
-      return prevTasks;
-    });
+    console.log('=== DEBUGGING SUBTASK CREATION ===');
+    console.log('TaskId received:', taskId);
+    console.log('Task from state:', tasks[taskId]);
+    console.log('All tasks keys:', Object.keys(tasks));
+    console.log('MongoDB User ID:', mongoUserId);
+
+    try {
+      // Create the subtask object for the API
+      const subtaskForApi = {
+        title: subtaskText.trim(),
+        text: subtaskText.trim(),
+        parentTaskId: taskId, // This should be the MongoDB _id
+        completed: false,
+        createdAt: new Date().toISOString(),
+        points: 0,
+        userId: mongoUserId,
+      };
+
+      console.log('Subtask object to send:', subtaskForApi);
+
+      // Call your API to create the subtask in MongoDB
+      const result = await createSubtask(subtaskForApi);
+      
+      console.log('Subtask creation result:', result);
+      
+      // Update local state with the actual subtask from MongoDB
+      const finalSubtask: Subtask = {
+        id: result._id, // Use MongoDB's _id
+        text: result.text || result.title, // Use text or fall back to title
+        completed: result.completed,
+      };
+
+      setTasks(prevTasks => {
+        const task = prevTasks[taskId];
+        if (task) {
+          return {
+            ...prevTasks,
+            [taskId]: {
+              ...task,
+              subtasks: [...task.subtasks, finalSubtask],
+            },
+          };
+        }
+        return prevTasks;
+      });
+    } catch (error) {
+      console.error('Error creating subtask:', error);
+      Alert.alert('Error', 'Failed to create subtask');
+    }
    };
 
 
@@ -262,14 +323,30 @@ const TasksPage = () => {
   });
 };
 
-  //
-  const toggleSubtask = (taskId: string, subtaskId: string) => {
+  const toggleSubtask = async (taskId: string, subtaskId: string) => {
     setTasks(prevTasks => {
       const task = prevTasks[taskId];
       if (task) {
-        const updatedSubtasks = task.subtasks.map(subtask =>
-          subtask.id === subtaskId ? { ...subtask, completed: !subtask.completed } : subtask
-        );
+        const updatedSubtasks = task.subtasks.map(subtask => {
+          if (subtask.id === subtaskId) {
+            const updatedSubtask = { ...subtask, completed: !subtask.completed };
+            
+            // Update subtask in backend with ALL required fields INCLUDING parentTaskId
+            updateSubtask(subtaskId, { 
+              title: updatedSubtask.text, // Send the text as title
+              text: updatedSubtask.text,  // Send the text
+              completed: updatedSubtask.completed,
+              parentTaskId: taskId, // ADD THIS LINE - preserve the parent task ID
+            })
+              .catch(error => {
+                console.error('Failed to update subtask in backend:', error);
+              });
+            
+            return updatedSubtask;
+          }
+          return subtask;
+        });
+        
         return {
           ...prevTasks,
           [taskId]: {
