@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { Alert, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button, IconButton, Text } from 'react-native-paper';
 import type { Subtask } from '../types/Subtask';
-import type { Task } from '../types/Task';
+import type { Task, Tag as TagItem } from '../types/Task';
 import CustomCheckbox from './CustomCheckbox';
 
 interface TaskCardProps {
@@ -20,7 +20,7 @@ interface TaskCardProps {
   onToggleComplete: (taskId: string) => void;
   onDelete: (taskId: string) => void;
   onToggleExpansion: (taskId: string) => void;
-  onAddSubtask: (taskId: string) => void;
+  onAddSubtask: (taskId: string, subtaskText: string) => void | Promise<void>;
   onToggleSubtask: (taskId: string, subtaskId: string) => void;
   onDeleteSubtask: (taskId: string, subtaskId: string) => void;
   onEditSubtask: (taskId: string, subtaskId: string, newText: string) => void;
@@ -32,6 +32,7 @@ interface TaskCardProps {
   newDueDate: string;
   setNewDueDate: (date: string) => void;
   handleDueDateUpdate: (taskId: string, dueDate: string) => void;
+  onUpdateTags?: (taskId: string, tags: TagItem[]) => void | Promise<void>;
 }
 
 // Move styles above component so it is available when TaskCard is defined
@@ -61,6 +62,24 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     marginTop: 4,
   },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 4,
+    marginLeft: 8,
+  },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4C6EF5',
+    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  tagChipText: { color: '#fff', fontSize: 12 },
+  tagRemove: { color: '#fff', fontWeight: 'bold', marginLeft: 6 },
   completedTask: {
     textDecorationLine: 'line-through',
     opacity: 0.6,
@@ -264,6 +283,25 @@ const TaskCard = ({ task, ...props }: TaskCardProps) => {
                   )
                 )
               )}
+            </View>
+          )}
+          {!!task.tags && task.tags.length > 0 && (
+            <View style={styles.tagsRow}>
+              {task.tags.map((t) => (
+                <View key={t.label} style={[styles.tagChip, { backgroundColor: t.color || '#4C6EF5' }]}>
+                  <Text style={styles.tagChipText}>{t.label}</Text>
+                  {task.expanded && !task.completed && props.onUpdateTags && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        const updated = (task.tags || []).filter(tag => tag.label !== t.label);
+                        props.onUpdateTags?.(task.id, updated);
+                      }}
+                    >
+                      <Text style={styles.tagRemove}>×</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
             </View>
           )}
           {task.expanded && task.text && (

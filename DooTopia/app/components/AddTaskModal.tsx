@@ -2,6 +2,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
 import { Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button, Menu, Portal, Text } from 'react-native-paper';
+import type { Tag as TagItem } from '../types/Task';
+import TagSelector from './Tag';
 interface AddTaskModalProps {
   visible: boolean;
   onClose: () => void;
@@ -17,9 +19,11 @@ interface AddTaskModalProps {
   isAssignLoading: boolean;
   dueDate: string;
   setDueDate: (v: string) => void;
+  tags: TagItem[];
+  setTags: (tags: TagItem[]) => void;
 }
 
-const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints, assignEmail, setAssignEmail, dueDate, setDueDate }: AddTaskModalProps) => {
+const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints, assignEmail, setAssignEmail, dueDate, setDueDate, tags, setTags }: AddTaskModalProps) => {
   const [pointsMenuVisible, setPointsMenuVisible] = useState(false);
   const [menuWidth, setMenuWidth] = useState<number | undefined>(undefined);
   const [descriptionHeight, setDescriptionHeight] = useState(120);
@@ -60,6 +64,11 @@ const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskTe
             textAlignVertical="top"
             onContentSizeChange={event => setDescriptionHeight(event.nativeEvent.contentSize.height)}
           />
+          {/* Tags selector */}
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ color: '#5A8A93', marginBottom: 6, fontWeight: '600' }}>Tags</Text>
+            <TagSelector value={tags} onChange={setTags} maxTags={10} />
+          </View>
             <TextInput
               style={styles.input}
               placeholder="Assign to (email, optional)"
