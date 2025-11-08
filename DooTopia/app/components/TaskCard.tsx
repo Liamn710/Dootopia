@@ -1,12 +1,3 @@
-//TODO: Implement task card UI
-//TODO:Add drag and drop functionality
-//TODO: Add animations and transitions
-//TODO: Add Subtasks functionality
-//TODO: Add due date and reminders functionality
-//BUG: Fix DropDown alignment issue
-
-
-
 import AntDesign from '@expo/vector-icons/AntDesign';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
