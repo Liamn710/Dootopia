@@ -34,6 +34,7 @@ userRoutes.route("/users").post(async(request,response) => {
         email: request.body.email,
         points: request.body.points,
         createdAt: request.body.createdAt,
+        inventory: request.body.inventory || []
     }
     let data = await db.collection("users").insertOne(mongoObject);
     response.status(201).json({message: "User created successfully", userId: data.insertedId});
