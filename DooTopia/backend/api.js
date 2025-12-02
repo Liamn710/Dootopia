@@ -282,3 +282,63 @@ export async function deleteSubtask(id) {
         return { error: "Subtask deletion failed" };
     }
 }
+
+// prize API***************************************************************************
+
+export async function getPrizes() {
+    const response = await axios.get(`${API_URL}/prizes`);
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "No prizes found" };
+    }
+}
+
+export async function getPrizeById(id) {
+    const response = await axios.get(`${API_URL}/prizes/${id}`);
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "Prize not found" };
+    }
+}
+
+export async function createPrize(prize) {
+    try {
+        const response = await axios.post(`${API_URL}/prizes`, prize);
+        if (response.status === 201) {
+            return response.data;
+        } else {
+            throw new Error('Failed to create prize');
+        }
+    } catch (error) {
+        console.error('Error creating prize:', error);
+        throw error;
+    }
+}
+
+export async function updatePrize(id, prize) {
+    try {
+        const response = await axios.put(`${API_URL}/prizes/${id}`, prize);
+        if (response.status === 200) {
+            return response.data;
+        } else {
+            throw new Error('Failed to update prize');
+        }
+    } catch (error) {
+        console.error('Error updating prize:', error);
+        throw error;
+    }
+}
+
+export async function deletePrize(id) {
+    const response = await axios.delete(`${API_URL}/prizes/${id}`);
+    if (response.status === 200) {
+        return { message: "Prize deleted successfully" };
+    }
+    else {
+        return { error: "Prize deletion failed" };
+    }
+}
