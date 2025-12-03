@@ -1,4 +1,4 @@
-//TODO:: Implement the StoreCard component
+
 // This component will display individual avatars for sale based on the points the user has.
 // It will show the avatar image, name, and price in points.
 // Users can tap on the card to view more details or purchase the avatar if they have enough points.

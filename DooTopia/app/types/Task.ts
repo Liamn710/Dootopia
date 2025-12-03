@@ -1,5 +1,10 @@
 import type { Subtask } from './Subtask';
 
+export interface Tag {
+	label: string;
+	color?: string; // hex color like #RRGGBB
+}
+
 export interface Task {
 	id: string;
 	title: string;
@@ -10,6 +15,8 @@ export interface Task {
 	expanded: boolean;
 	assignedToId?: string;
 	dueDate?: string;
+	/** Optional tags attached to the task */
+	tags?: Tag[];
 }
 
 export interface TaskDictionary {

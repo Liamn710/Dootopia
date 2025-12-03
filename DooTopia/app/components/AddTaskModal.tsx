@@ -1,7 +1,9 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button, Menu, Portal, Text } from 'react-native-paper';
+import type { Tag as TagItem } from '../types/Task';
+import TagSelector from './Tag';
 interface AddTaskModalProps {
   visible: boolean;
   onClose: () => void;
@@ -17,13 +19,32 @@ interface AddTaskModalProps {
   isAssignLoading: boolean;
   dueDate: string;
   setDueDate: (v: string) => void;
+  tags: TagItem[];
+  setTags: (tags: TagItem[]) => void;
+  durationMinutes?: string;
+  setDurationMinutes?: (v: string) => void;
 }
 
-const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints, assignEmail, setAssignEmail, dueDate, setDueDate }: AddTaskModalProps) => {
+const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskText, setTaskText, taskPoints, setTaskPoints, assignEmail, setAssignEmail, dueDate, setDueDate, tags, setTags, durationMinutes, setDurationMinutes }: AddTaskModalProps) => {
   const [pointsMenuVisible, setPointsMenuVisible] = useState(false);
   const [menuWidth, setMenuWidth] = useState<number | undefined>(undefined);
   const [descriptionHeight, setDescriptionHeight] = useState(120);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const currentTimeLabel = useMemo(() => {
+    if (!dueDate) return '';
+    const d = new Date(dueDate);
+    const hh = d.getHours().toString().padStart(2, '0');
+    const mm = d.getMinutes().toString().padStart(2, '0');
+    return `${hh}:${mm}`;
+  }, [dueDate]);
+
+  const applyTimeToDueDate = (hours: number, minutes: number) => {
+    const base = dueDate ? new Date(dueDate) : new Date();
+    const updated = new Date(base);
+    updated.setHours(hours, minutes, 0, 0);
+    setDueDate(updated.toISOString());
+  };
 
 
   const openPointsMenu = () => setPointsMenuVisible(true);
@@ -60,6 +81,11 @@ const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskTe
             textAlignVertical="top"
             onContentSizeChange={event => setDescriptionHeight(event.nativeEvent.contentSize.height)}
           />
+          {/* Tags selector */}
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ color: '#5A8A93', marginBottom: 6, fontWeight: '600' }}>Tags</Text>
+            <TagSelector value={tags} onChange={setTags} maxTags={10} />
+          </View>
             <TextInput
               style={styles.input}
               placeholder="Assign to (email, optional)"
@@ -69,40 +95,91 @@ const AddTaskModal = ({ visible, onClose, onAdd, taskTitle, setTaskTitle, taskTe
               keyboardType="email-address"
             />
             {Platform.OS === 'web' ? (
-  <input
-    type="date"
-    style={{ ...styles.input, padding: 8, fontSize: 16 }}
-    value={dueDate ? dueDate.substring(0, 10) : ''}
-    onChange={e => setDueDate(e.target.value)}
-  />
-) : (
-  <>
-    <TouchableOpacity
-      style={styles.input}
-      onPress={() => setShowDatePicker(true)}
-    >
-      <Text style={{ fontSize: 16, color: dueDate ? '#000' : '#999' }}>
-        {dueDate ? new Date(dueDate).toLocaleDateString() : 'Due Date'}
-      </Text>
-    </TouchableOpacity>
-    {showDatePicker && (
-      <DateTimePicker
-        value={dueDate ? new Date(dueDate) : new Date()}
-        mode="date"
-        display="spinner"
-        onChange={(event, selectedDate) => {
-          setShowDatePicker(false);
-          if (selectedDate) {
-            setDueDate(selectedDate.toISOString());
-          }
-        }}
-      />
-    )}
-  </>
-)}
+              <>
+                <input
+                  type="date"
+                  style={{ ...styles.input, padding: 8, fontSize: 16 }}
+                  value={dueDate ? dueDate.substring(0, 10) : ''}
+                  onChange={e => {
+                    const dateStr = e.target.value; // YYYY-MM-DD
+                    if (!dateStr) { setDueDate(''); return; }
+                    const base = dueDate ? new Date(dueDate) : new Date();
+                    const [y, m, d] = dateStr.split('-').map(Number);
+                    const updated = new Date(base);
+                    updated.setFullYear(y, (m - 1), d);
+                    setDueDate(updated.toISOString());
+                  }}
+                />
+                <input
+                  type="time"
+                  style={{ ...styles.input, padding: 8, fontSize: 16 }}
+                  value={currentTimeLabel}
+                  onChange={e => {
+                    const val = e.target.value; // HH:MM
+                    if (!val) return;
+                    const [hh, mm] = val.split(':').map(Number);
+                    applyTimeToDueDate(hh, mm);
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.input}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={{ fontSize: 16, color: dueDate ? '#000' : '#999' }}>
+                    {dueDate ? new Date(dueDate).toLocaleDateString() : 'Due Date'}
+                  </Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={dueDate ? new Date(dueDate) : new Date()}
+                    mode="date"
+                    display="spinner"
+                    onChange={(event, selectedDate) => {
+                      setShowDatePicker(false);
+                      if (selectedDate) {
+                        setDueDate(selectedDate.toISOString());
+                      }
+                    }}
+                  />
+                )}
+                <TouchableOpacity
+                  style={styles.input}
+                  onPress={() => setShowTimePicker(true)}
+                >
+                  <Text style={{ fontSize: 16, color: currentTimeLabel ? '#000' : '#999' }}>
+                    {currentTimeLabel || 'Due Time (optional)'}
+                  </Text>
+                </TouchableOpacity>
+                {showTimePicker && (
+                  <DateTimePicker
+                    value={dueDate ? new Date(dueDate) : new Date()}
+                    mode="time"
+                    display="spinner"
+                    onChange={(event, selectedDate) => {
+                      setShowTimePicker(false);
+                      if (selectedDate) {
+                        const h = selectedDate.getHours();
+                        const m = selectedDate.getMinutes();
+                        applyTimeToDueDate(h, m);
+                      }
+                    }}
+                  />
+                )}
+              </>
+            )}
             <Text style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
               Leave blank to assign to yourself
             </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Duration (minutes, optional)"
+              keyboardType="numeric"
+              value={durationMinutes ?? ''}
+              onChangeText={(v) => setDurationMinutes?.(v.replace(/[^0-9]/g, ''))}
+            />
           <View style={styles.menuWrapper}>
             <Menu
               visible={pointsMenuVisible}

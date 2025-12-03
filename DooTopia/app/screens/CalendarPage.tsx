@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Text } from 'react-native-paper';
-import { getMongoUserByFirebaseId, getTasks } from '../../backend/api';
+import { getMongoUserByFirebaseId, getTasks, updateTask, updateUser } from '../../backend/api';
 import { auth } from '../../FirebaseConfig';
+import CustomCheckbox from '../components/CustomCheckbox';
 
 const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState('');
@@ -57,29 +58,55 @@ const CalendarPage = () => {
     }
   };
 
-  // Build markedDates with custom styles for days with tasks
+  // Toggle task completion from calendar list
+  const toggleTaskFromCalendar = async (task: any) => {
+    try {
+      const updatedCompleted = !task.completed;
+      await updateTask(task._id, { completed: updatedCompleted });
+      const delta = updatedCompleted ? (Number(task.points) || 0) : -(Number(task.points) || 0);
+      if (mongoUserId && delta !== 0) {
+        await updateUser(mongoUserId, { $inc: { points: delta } });
+      }
+      setTasks(prev => prev.map(t => t._id === task._id ? { ...t, completed: updatedCompleted } : t));
+      setTasksForDate(prev => prev.map(t => t._id === task._id ? { ...t, completed: updatedCompleted } : t));
+    } catch (e) {
+      console.error('Failed to toggle task from calendar:', e);
+    }
+  };
+
+  // Helper: pick a display color from task tags
+  const getTaskColor = (task: any): string => {
+    const fallback = '#5A8A93';
+    if (!task?.tags || !Array.isArray(task.tags) || task.tags.length === 0) return fallback;
+    const first = task.tags[0];
+    if (first && typeof first === 'object' && first.color) return first.color;
+    return fallback;
+  };
+
+  // Build markedDates with multi-colored dots for days with tasks
   const markedDates: { [date: string]: any } = {};
   tasks.forEach(task => {
     if (task.dueDate) {
       const dateKey = task.dueDate.substring(0, 10);
-      markedDates[dateKey] = {
-        customStyles: {
-          container: {},
-          text: {},
-        },
-        dots: [
-          {
-            key: task._id || task.title,
-            color: '#5A8A93',
-            selectedDotColor: '#5A8A93'
-          }
-        ],
-        ...(selectedDate === dateKey && { selected: true, selectedColor: 'blue' })
-      };
+      const color = getTaskColor(task);
+      if (!markedDates[dateKey]) {
+        markedDates[dateKey] = { dots: [] as any[] };
+      }
+      markedDates[dateKey].dots.push({
+        key: (task._id || task.title) + '-dot',
+        color,
+        selectedDotColor: color,
+      });
+      if (selectedDate === dateKey) {
+        markedDates[dateKey].selected = true;
+        // Use a subtle selection color to avoid clashing with dots
+        markedDates[dateKey].selectedColor = '#C7E6ED';
+      }
     }
   });
 
-  const renderDay = ({ date, state }) => {
+  const renderDay = (props: any) => {
+    const { date, state } = props || {};
     const dateString = date.dateString;
     const dayTasks = tasks.filter(
       task => task.dueDate && task.dueDate.substring(0, 10) === dateString
@@ -91,7 +118,7 @@ const CalendarPage = () => {
             {date.day}
           </Text>
           {dayTasks.length === 1 && (
-            <Text style={{ fontSize: 8, color: '#5A8A93' }}>
+            <Text style={{ fontSize: 8, color: getTaskColor(dayTasks[0]) }}>
               {dayTasks[0].title.length > 10
                 ? dayTasks[0].title.substring(0, 10) + '...'
                 : dayTasks[0].title}
@@ -112,7 +139,7 @@ const CalendarPage = () => {
       <Text variant="headlineMedium">Calendar Page</Text>
       <Calendar
         onDayPress={handleDayPress}
-        markingType="custom"
+        markingType="multi-dot"
         markedDates={markedDates}
         dayComponent={renderDay}
       />
@@ -121,10 +148,32 @@ const CalendarPage = () => {
           <View>
             <Text variant="titleMedium">Tasks for {selectedDate}:</Text>
             {tasksForDate.map((task, idx) => (
-              <View key={task._id || idx} style={{ marginVertical: 6, padding: 8, backgroundColor: '#EAF6F9', borderRadius: 8 }}>
-                <Text style={{ fontWeight: 'bold' }}>{task.title}</Text>
-                <Text>{task.text}</Text>
-                {task.points !== undefined && <Text>Points: {task.points}</Text>}
+              <View
+                key={task._id || idx}
+                style={{
+                  marginVertical: 6,
+                  padding: 8,
+                  backgroundColor: '#EAF6F9',
+                  borderRadius: 8,
+                  borderLeftWidth: 4,
+                  borderLeftColor: getTaskColor(task),
+                  flexDirection: 'row',
+                  alignItems: 'flex-start'
+                }}
+              >
+                <CustomCheckbox
+                  status={task.completed ? 'checked' : 'unchecked'}
+                  onPress={() => toggleTaskFromCalendar(task)}
+                />
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={{ fontWeight: 'bold', color: getTaskColor(task), textDecorationLine: task.completed ? 'line-through' : 'none' }}>
+                    {task.title}
+                  </Text>
+                  {!!task.text && (
+                    <Text style={{ textDecorationLine: task.completed ? 'line-through' : 'none' }}>{task.text}</Text>
+                  )}
+                  {task.points !== undefined && <Text>Points: {task.points}</Text>}
+                </View>
               </View>
             ))}
           </View>

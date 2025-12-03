@@ -2,28 +2,28 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Chip, Menu, Switch as PaperSwitch, Text } from 'react-native-paper';
 import {
-  createSubtask,
-  createTask,
-  createUser,
-  deleteSubtask as deleteSubtaskApi,
-  deleteTask as deleteTaskApi,
-  getMongoUserByEmail,
-  getMongoUserByFirebaseId,
-  getSubtasks,
-  getTasks,
-  getUsers,
-  updateSubtask, // Add this import
-  updateTask,
-  updateUser
+    createSubtask,
+    createTask,
+    createUser,
+    deleteSubtask as deleteSubtaskApi,
+    deleteTask as deleteTaskApi,
+    getMongoUserByEmail,
+    getMongoUserByFirebaseId,
+    getSubtasks,
+    getTasks,
+    getUsers,
+    updateSubtask, // Add this import
+    updateTask,
+    updateUser
 } from '../../backend/api';
 import { auth } from '../../FirebaseConfig';
 import AddTaskModal from '../components/AddTaskModal';
 import TaskCard from '../components/TaskCard';
 import type { Subtask } from '../types/Subtask';
-import type { Task, TaskDictionary } from '../types/Task';
+import type { Tag as TagItem, Task, TaskDictionary } from '../types/Task';
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState<TaskDictionary>({});
@@ -40,12 +40,28 @@ const TasksPage = () => {
   const [usersMap, setUsersMap] = useState<{ [id: string]: string }>({});
   const [userId, setUserId] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState('');
+  const [tags, setTags] = useState<TagItem[]>([]);
   const [editingDueDateTaskId, setEditingDueDateTaskId] = useState<string | null>(null);
   const [newDueDate, setNewDueDate] = useState<string>('');
+  // Filters
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('ALL');
+  const [assigneeMenuVisible, setAssigneeMenuVisible] = useState(false);
+  const [selectedTagLabels, setSelectedTagLabels] = useState<string[]>([]);
+  const [tagMatchAll, setTagMatchAll] = useState<boolean>(false);
   const tasksArray: Task[] = Object.values(tasks);
-  const incompleteTasks = tasksArray.filter(task => !task.completed);
-  const completedTasks = tasksArray.filter(task => task.completed);
-  const noTasks = tasksArray.length === 0;
+  const allTagLabels = Array.from(new Set(tasksArray.flatMap(t => (t.tags || []).map(tag => tag.label))));
+  const matchesAssignee = (task: Task) => assigneeFilter === 'ALL' ? true : task.assignedToId === assigneeFilter;
+  const matchesTags = (task: Task) => {
+    if (selectedTagLabels.length === 0) return true;
+    const labels = new Set((task.tags || []).map(t => t.label));
+    return tagMatchAll
+      ? selectedTagLabels.every(l => labels.has(l))
+      : selectedTagLabels.some(l => labels.has(l));
+  };
+  const filteredTasks = tasksArray.filter(t => matchesAssignee(t) && matchesTags(t));
+  const incompleteTasks = filteredTasks.filter(task => !task.completed);
+  const completedTasks = filteredTasks.filter(task => task.completed);
+  const noTasks = filteredTasks.length === 0;
   
   // Listen for Firebase Auth state changes
   useEffect(() => {
@@ -152,6 +168,11 @@ const TasksPage = () => {
               completed: subtask.completed || false,
             }));
 
+          // Normalize tags from backend: may be strings or objects
+          const normalizedTags: TagItem[] = Array.isArray(task.tags)
+            ? task.tags.map((t: any) => typeof t === 'string' ? ({ label: t }) : ({ label: t.label ?? String(t), color: t.color }))
+            : [];
+
           acc[taskId as string] = {
             id: taskId as string,
             title: task.title ?? 'Untitled Task',
@@ -162,6 +183,7 @@ const TasksPage = () => {
             expanded: false,
             assignedToId: task.assignedToId,
             dueDate: task.dueDate,
+            tags: normalizedTags,
           };
           return acc;
         }, {} as TaskDictionary);
@@ -211,6 +233,7 @@ const TasksPage = () => {
       userId: mongoUserId,
       assignedToId: assignToId,
       dueDate: dueDate || undefined,
+      tags: Array.isArray(tags) ? tags.map(t => ({ label: t.label, color: t.color })) : [],
     };
 
     const result = await createTask(taskObject);
@@ -225,6 +248,9 @@ const TasksPage = () => {
       expanded: false,
       assignedToId: result.assignedToId,
       dueDate: result.dueDate || undefined,
+      tags: Array.isArray(result.tags)
+        ? result.tags.map((t: any) => typeof t === 'string' ? ({ label: t }) : ({ label: t.label ?? String(t), color: t.color }))
+        : (Array.isArray(tags) ? tags : []),
     };
     setTasks(prevTasks => ({
       ...prevTasks,
@@ -237,6 +263,7 @@ const TasksPage = () => {
     setAssignEmail('');
     setIsAssignLoading(false);
     setDueDate('');
+    setTags([]);
   };
   const addSubtask = async (taskId: string, subtaskText: string) => { 
     if (!subtaskText.trim()) {
@@ -476,6 +503,23 @@ const TasksPage = () => {
     return usersMap[assignedToId] || "Unknown";
   };
 
+  // Update tags handler: remove/add tags for existing tasks
+  const handleUpdateTags = async (taskId: string, updatedTags: TagItem[]) => {
+    try {
+      await updateTask(taskId, { tags: updatedTags.map(t => ({ label: t.label, color: t.color })) });
+      setTasks(prev => ({
+        ...prev,
+        [taskId]: {
+          ...prev[taskId],
+          tags: updatedTags,
+        }
+      }));
+    } catch (e) {
+      console.error('Failed to update tags', e);
+      Alert.alert('Error', 'Failed to update tags');
+    }
+  };
+
 
 
   const renderCompletedSection = () => {
@@ -514,6 +558,15 @@ const TasksPage = () => {
                 assignedUserName={getAssignedUserName(task.assignedToId)}
                 onReassign={handleReassign}
                 isReassignLoading={reassignLoading}
+                onUpdateTags={handleUpdateTags}
+                onEditDueDate={(taskId: string) => {
+                  setEditingDueDateTaskId(taskId);
+                  setNewDueDate(tasks[taskId]?.dueDate?.substring(0, 10) || '');
+                }}
+                editingDueDateTaskId={editingDueDateTaskId}
+                newDueDate={newDueDate}
+                setNewDueDate={setNewDueDate}
+                handleDueDateUpdate={handleDueDateUpdate}
               />
             ))}
           </View>
@@ -538,6 +591,49 @@ const TasksPage = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
+      {/* Filters */}
+      <View style={styles.filtersRow}>
+        <Menu
+          visible={assigneeMenuVisible}
+          onDismiss={() => setAssigneeMenuVisible(false)}
+          anchor={
+            <Button
+              mode="outlined"
+              onPress={() => setAssigneeMenuVisible(true)}
+              style={styles.filterButton}
+            >
+              Assigned: {assigneeFilter === 'ALL' ? 'All' : (assigneeFilter === mongoUserId ? 'You' : (usersMap[assigneeFilter] || 'Unknown'))}
+            </Button>
+          }
+        >
+          <Menu.Item onPress={() => { setAssigneeFilter('ALL'); setAssigneeMenuVisible(false); }} title="All" />
+          <Menu.Item onPress={() => { setAssigneeFilter(mongoUserId); setAssigneeMenuVisible(false); }} title="You" />
+          {Object.entries(usersMap).filter(([id]) => id !== mongoUserId).map(([id, name]) => (
+            <Menu.Item key={id} onPress={() => { setAssigneeFilter(id); setAssigneeMenuVisible(false); }} title={name} />
+          ))}
+        </Menu>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagsFilterScroll} style={{ flex: 1 }}>
+          {allTagLabels.map(label => {
+            const selected = selectedTagLabels.includes(label);
+            return (
+              <Chip
+                key={label}
+                selected={selected}
+                onPress={() => setSelectedTagLabels(prev => selected ? prev.filter(l => l !== label) : [...prev, label])}
+                style={[styles.tagFilterChip, selected && styles.tagFilterChipSelected]}
+              >
+                {label}
+              </Chip>
+            );
+          })}
+        </ScrollView>
+        <View style={styles.matchToggle}>
+          <Text style={styles.matchToggleLabel}>{tagMatchAll ? 'All' : 'Any'}</Text>
+          <PaperSwitch value={tagMatchAll} onValueChange={setTagMatchAll} />
+        </View>
+      </View>
+
       <Text variant="headlineMedium" style={styles.title}>Tasks Page</Text>
 
       <FlatList
@@ -556,6 +652,7 @@ const TasksPage = () => {
             assignedUserName={getAssignedUserName(item.assignedToId)}
             onReassign={handleReassign}
             isReassignLoading={reassignLoading}
+            onUpdateTags={handleUpdateTags}
             // Add these props:
             onEditDueDate={(taskId: string) => {
               setEditingDueDateTaskId(taskId);
@@ -604,6 +701,8 @@ const TasksPage = () => {
         isAssignLoading={isAssignLoading}
         dueDate={dueDate} // Pass dueDate
         setDueDate={setDueDate} // Pass setter
+        tags={tags}
+        setTags={setTags}
       />
 
     </KeyboardAvoidingView>
@@ -698,6 +797,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingVertical: 8,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  filterButton: {
+    marginRight: 8,
+    borderColor: '#9DBCC3',
+  },
+  tagsFilterScroll: {
+    paddingVertical: 4,
+  },
+  tagFilterChip: {
+    marginRight: 6,
+    backgroundColor: '#EAF6F9',
+  },
+  tagFilterChipSelected: {
+    backgroundColor: '#C7E6ED',
+  },
+  matchToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  matchToggleLabel: {
+    marginRight: 6,
+    color: '#5A8A93',
   },
 });
 
