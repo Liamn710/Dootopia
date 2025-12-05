@@ -1,10 +1,9 @@
-import { signOut, deleteUser as firebaseDeleteUser,sendPasswordResetEmail } from 'firebase/auth';
-import React from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Text, Button, Avatar } from 'react-native-paper';
-import { auth } from '../../FirebaseConfig';
 import { useRouter } from 'expo-router';
+import { deleteUser as firebaseDeleteUser, sendPasswordResetEmail, signOut } from 'firebase/auth';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Avatar, Button, Text } from 'react-native-paper';
 import { deleteUser as deleteUserApi, getMongoUserByFirebaseId } from '../../backend/api';
+import { auth } from '../../FirebaseConfig';
 
 const ProfilePage = () => {
   const router = useRouter();
@@ -60,7 +59,7 @@ const ProfilePage = () => {
 
   const onAvatarPress = () => {
     //go to store page at the moment
-    router.push("/screens/StorePage");
+    router.push("/screens/OwnedAvatarsPage");
   };
 
   return (
