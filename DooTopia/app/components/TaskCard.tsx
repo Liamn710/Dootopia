@@ -1,11 +1,12 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Alert, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button, IconButton, Text } from 'react-native-paper';
 import type { Subtask } from '../types/Subtask';
 import type { Tag as TagItem, Task } from '../types/Task';
 import CustomCheckbox from './CustomCheckbox';
+import TaskModal, { type AssigneeOption, type EditableTaskValues } from './TaskModal';
 
 interface TaskCardProps {
   task: Task;
@@ -28,6 +29,9 @@ interface TaskCardProps {
   setNewDueTime?: (time: string) => void;
   handleDueDateUpdate: (taskId: string, dueDate: string) => void;
   onUpdateTags?: (taskId: string, tags: TagItem[]) => void | Promise<void>;
+  onEditTask?: (taskId: string, values: EditableTaskValues) => void | Promise<void>;
+  assigneeOptions?: AssigneeOption[];
+  updatingTaskId?: string | null;
 }
 
 // Move styles above component so it is available when TaskCard is defined
@@ -42,6 +46,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
+  },
+  pressedCard: {
+    opacity: 0.92,
   },
   taskContent: {
     flexDirection: 'row',
@@ -178,10 +185,14 @@ const styles = StyleSheet.create({
   deleteSubtaskButton: {
     margin: 0,
   },
+  editButton: {
+    margin: 0,
+  },
 });
 
 
 const TaskCard = ({ task, ...props }: TaskCardProps) => {
+  const isWeb = Platform.OS === 'web';
   // Assignment modal state
   const [reassignModalVisible, setReassignModalVisible] = useState(false);
   const [reassignEmail, setReassignEmail] = useState('');
@@ -220,9 +231,32 @@ const TaskCard = ({ task, ...props }: TaskCardProps) => {
 
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskText, setNewSubtaskText] = useState('');
+  const [editModalVisible, setEditModalVisible] = useState(false);
+
+  const handleEditTask = async (values: EditableTaskValues) => {
+    if (!props.onEditTask) {
+      return;
+    }
+    try {
+      await props.onEditTask(task.id, values);
+      setEditModalVisible(false);
+    } catch (error) {
+      console.error('Failed to edit task', error);
+    }
+  };
+
+  const handleLongPressEdit = () => {
+    if (!isWeb && props.onEditTask) {
+      setEditModalVisible(true);
+    }
+  };
 
   return (
-    <View style={styles.taskCard}>
+    <Pressable
+      style={({ pressed }) => [styles.taskCard, !isWeb && pressed && styles.pressedCard]}
+      onLongPress={!isWeb && props.onEditTask ? handleLongPressEdit : undefined}
+      delayLongPress={!isWeb && props.onEditTask ? 400 : undefined}
+    >
       <View style={styles.taskContent}>
         <CustomCheckbox
           status={task.completed ? 'checked' : 'unchecked'}
@@ -428,6 +462,14 @@ const TaskCard = ({ task, ...props }: TaskCardProps) => {
         <Text style={styles.pointsText}>
           {task.points ?? 0} pts
         </Text>
+        {props.onEditTask && isWeb && (
+          <IconButton
+            icon={() => <AntDesign name="edit" size={18} color="#5A8A93" />}
+            size={20}
+            onPress={() => setEditModalVisible(true)}
+            style={styles.editButton}
+          />
+        )}
         <IconButton
           icon={() => <AntDesign name="close" size={20} color="#666" />}
           size={20}
@@ -573,7 +615,19 @@ const TaskCard = ({ task, ...props }: TaskCardProps) => {
           </View>
         </View>
       )}
-    </View>
+
+      {props.onEditTask && (
+        <TaskModal
+          mode="edit"
+          visible={editModalVisible}
+          onClose={() => setEditModalVisible(false)}
+          task={task}
+          assigneeOptions={props.assigneeOptions}
+          onSubmit={handleEditTask}
+          isSaving={props.updatingTaskId === task.id}
+        />
+      )}
+    </Pressable>
   );
 };
 
