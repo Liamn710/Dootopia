@@ -4,13 +4,13 @@
 // Users can tap on the card to view more details or purchase the avatar if they have enough points.
 
 import React from 'react';
-import { StyleSheet, View , useWindowDimensions} from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Avatar, Button, Card, Text } from 'react-native-paper';
 
 interface StoreCardProps {
   title: string;
-  subtitle: string;
-  content: string;
+  subtitle?: string;
+  content?: string;
   imageUrl?: string;
   price: number;
   userPoints?: number; // Add user's current points for purchase validation
@@ -50,10 +50,10 @@ export const StoreCard = ({
 
   return (
     <Card style={styles.card} onPress={onCardPress}>
-      <Card.Title title={title} subtitle={subtitle} left={LeftContent} />
+      <Card.Title title={title} subtitle={subtitle || ""} left={LeftContent} />
       <Card.Cover source={{ uri: imageUrl }} style={styles.cover} />
       <Card.Content>
-        <Text variant="bodyMedium">{content}</Text>
+        {content ? <Text variant="bodyMedium">{content}</Text> : null}
         <View style={styles.priceContainer}>
           <Text variant="headlineSmall" style={styles.priceText}>
             {price} points

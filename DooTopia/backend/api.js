@@ -58,6 +58,16 @@ export async function updateUser(id, user) {
     }
 }
 
+export async function selectUserAvatar(id, prizeId) {
+    const response = await axios.put(`${API_URL}/users/${id}/avatar`, { prizeId });
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "Avatar update failed" };
+    }
+}
+
 export async function deleteUser(id) {
     const response = await axios.delete(`${API_URL}/users/${id}`);
     if (response.status === 200) {

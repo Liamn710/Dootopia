@@ -75,8 +75,8 @@ export default function TagSelector({
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 12 },
-  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap' },
+  container: { padding: 12, width: '100%', alignItems: 'center' },
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', width: '100%' },
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -91,8 +91,11 @@ const styles = StyleSheet.create({
   paletteRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 6,
     marginBottom: 4,
+    flexWrap: 'wrap',
+    width: '100%',
   },
   swatch: {
     width: 20,
@@ -108,5 +111,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 10,
     height: 40,
+    width: '100%',
+    textAlign: 'center',
   },
 });

@@ -34,7 +34,9 @@ userRoutes.route("/users").post(async(request,response) => {
         email: request.body.email,
         points: request.body.points,
         createdAt: request.body.createdAt,
-        inventory: request.body.inventory || []
+        inventory: request.body.inventory || [],
+        selectedAvatarId: request.body.selectedAvatarId || null,
+        selectedAvatarUrl: request.body.selectedAvatarUrl || null
     }
     let data = await db.collection("users").insertOne(mongoObject);
     response.status(201).json({message: "User created successfully", userId: data.insertedId});
@@ -74,6 +76,66 @@ userRoutes.route("/users/:id").put(async (request, response) => {
         response.status(200).json({ message: "User updated successfully" });
     } else {
         response.status(404).json({ error: "User not found or not updated" });
+    }
+});
+
+userRoutes.route("/users/:id/avatar").put(async (request, response) => {
+    try {
+        const db = database.getdb();
+        const id = request.params.id;
+        const { prizeId } = request.body;
+
+        if (!prizeId) {
+            return response.status(400).json({ error: "Missing prizeId" });
+        }
+
+        let userObjectId;
+        try {
+            userObjectId = new ObjectId(id);
+        } catch (error) {
+            return response.status(400).json({ error: "Invalid user id" });
+        }
+        const user = await db.collection("users").findOne({ _id: userObjectId });
+
+        if (!user) {
+            return response.status(404).json({ error: "User not found" });
+        }
+
+        const inventory = Array.isArray(user.inventory)
+            ? user.inventory.map((item) => item?.toString())
+            : [];
+
+        if (!inventory.includes(prizeId)) {
+            return response.status(403).json({ error: "Avatar not owned by user" });
+        }
+
+        let prizeObjectId;
+        try {
+            prizeObjectId = new ObjectId(prizeId);
+        } catch (error) {
+            return response.status(400).json({ error: "Invalid prizeId" });
+        }
+
+        const prize = await db.collection("prizes").findOne({ _id: prizeObjectId });
+
+        if (!prize) {
+            return response.status(404).json({ error: "Avatar not found" });
+        }
+
+        const avatarPayload = {
+            selectedAvatarId: prizeId,
+            selectedAvatarUrl: prize.imageUrl || null
+        };
+
+        await db.collection("users").updateOne(
+            { _id: userObjectId },
+            { $set: avatarPayload }
+        );
+
+        response.status(200).json({ message: "Avatar updated successfully", ...avatarPayload });
+    } catch (error) {
+        console.error("Error updating avatar", error);
+        response.status(500).json({ error: "Failed to update avatar" });
     }
 });
 //delete user by id
