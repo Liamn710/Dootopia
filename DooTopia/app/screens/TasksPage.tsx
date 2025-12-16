@@ -1,37 +1,14 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View, FlatList } from 'react-native';
-import { Button, Chip, Menu, Switch as PaperSwitch, Text } from 'react-native-paper';
-import {
-  addTaskToList,
-  createList,
-  createSubtask,
-  createTask,
-  createUser,
-  deleteList,
-  deleteSubtask as deleteSubtaskApi,
-  deleteTask as deleteTaskApi,
-  getListsByUserId,
-  getMongoUserByEmail,
-  getMongoUserByFirebaseId,
-  getSubtasks,
-  getTasks,
-  getUsers,
-  removeTaskFromList,
-  updateListName,
-  updateSubtask,
-  updateTask,
-  updateUser
-} from '../../backend/api';
-import { auth } from '../../FirebaseConfig';
-import AddTaskModal from '../components/AddTaskModal';
-import ListCard from '../components/ListCard'; // Add this import
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Button, Text } from 'react-native-paper';
+import ListCard from '../components/ListCard';
 import TaskCard from '../components/TaskCard';
 import TaskFilters from '../components/TaskFilters';
 import TaskModal, { type AssigneeOption, type CreatableTaskValues } from '../components/TaskModal';
 import useCurrentUser from '../hooks/useCurrentUser';
+import useListsData from '../hooks/useListsData';
 import useTasksData from '../hooks/useTasksData';
 import useUsersMap from '../hooks/useUsersMap';
 import type { Task } from '../types/Task';
@@ -41,101 +18,19 @@ const TasksPage = () => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [editingDueDateTaskId, setEditingDueDateTaskId] = useState<string | null>(null);
   const [newDueDate, setNewDueDate] = useState<string>('');
+  const [newDueTime, setNewDueTime] = useState<string>('');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('ALL');
   const [selectedTagLabels, setSelectedTagLabels] = useState<string[]>([]);
   const [tagMatchAll, setTagMatchAll] = useState<boolean>(false);
-  const tasksArray: Task[] = Object.values(tasks);
-  const allTagLabels = Array.from(new Set(tasksArray.flatMap(t => (t.tags || []).map(tag => tag.label))));
-  const matchesAssignee = (task: Task) => assigneeFilter === 'ALL' ? true : task.assignedToId === assigneeFilter;
-  const matchesTags = (task: Task) => {
-    if (selectedTagLabels.length === 0) return true;
-    const labels = new Set((task.tags || []).map(t => t.label));
-    return tagMatchAll
-      ? selectedTagLabels.every(l => labels.has(l))
-      : selectedTagLabels.some(l => labels.has(l));
-  };
-  const filteredTasks = tasksArray.filter(t => matchesAssignee(t) && matchesTags(t));
-  
-  // Note: incompleteTasks, completedTasks, and noTasks will be calculated after lists is declared
-  // Remove these lines from here:
-  // const incompleteTasks = filteredTasks.filter(task => !task.completed);
-  // const completedTasks = filteredTasks.filter(task => task.completed);
-  // const noTasks = filteredTasks.length === 0;
-  
-  // Listen for Firebase Auth state changes
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
-      if (user) {
-        setUserId(user.uid);
-      } else {
-        setUserId(null);
-        setMongoUserId('');
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
-  // Fetch Mongo user when userId changes
-  useEffect(() => {
-    const fetchOrCreateMongoUser = async () => {
-      setMongoUserLoading(true);
-      if (userId) {
-        try {
-          let mongoUser = await getMongoUserByFirebaseId(userId);
-          if (!mongoUser || !mongoUser._id) {
-            // Try to get Firebase user info
-            const firebaseUser = auth.currentUser;
-            if (firebaseUser) {
-              // Compose new user object for Mongo
-              const newUser = {
-                firebaseUserId: firebaseUser.uid,
-                name: firebaseUser.displayName || firebaseUser.email || 'Unnamed User',
-                email: firebaseUser.email || '',
-                // Add any other default fields you want here
-              };
-              mongoUser = await createUser(newUser);
-              if (mongoUser && mongoUser._id) {
-                setMongoUserId(mongoUser._id);
-              } else {
-                setMongoUserId('');
-                console.error('Failed to create Mongo user:', mongoUser);
-              }
-            } else {
-              setMongoUserId('');
-              console.error('No Firebase user found for Mongo user creation.');
-            }
-          } else {
-            setMongoUserId(mongoUser._id);
-          }
-        } catch (error) {
-          setMongoUserId('');
-          console.error('Error fetching or creating MongoDB user:', error);
-        }
-      } else {
-        setMongoUserId('');
-      }
-      setMongoUserLoading(false);
-    };
-    fetchOrCreateMongoUser();
-  }, [userId]);
+  // List UI states
+  const [listModalVisible, setListModalVisible] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [showLists, setShowLists] = useState(true);
+  const [listCompletedVisible, setListCompletedVisible] = useState<{ [listId: string]: boolean }>({});
+  const [expandedListId, setExpandedListId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const users = await getUsers(); // Your API call to /users
-        // Build a map: { userId: name }
-        const map: { [id: string]: string } = {};
-        users.forEach((user: any) => {
-          map[user._id] = user.name;
-        });
-        setUsersMap(map);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      }
-    };
-    fetchUsers();
-  }, []);
-
+  // Hooks
   const { mongoUserId, mongoUserLoading } = useCurrentUser();
   const { usersMap } = useUsersMap();
   const {
@@ -158,16 +53,45 @@ const TasksPage = () => {
     updatingTaskId,
   } = useTasksData(mongoUserId);
 
+  // Use the new lists hook
+  const {
+    lists,
+    refreshLists,
+    createList,
+    deleteList,
+    renameList,
+    addTaskToList,
+    removeTaskFromList,
+    isCreatingList,
+  } = useListsData(mongoUserId);
+
+  // Fetch tasks and lists when screen is focused
   useFocusEffect(
     useCallback(() => {
       if (!mongoUserLoading && mongoUserId) {
+        console.log('TasksPage: Refreshing data for user:', mongoUserId);
         refreshTasks();
+        refreshLists();
       }
       return undefined;
-    }, [mongoUserId, mongoUserLoading, refreshTasks])
+    }, [mongoUserId, mongoUserLoading, refreshTasks, refreshLists])
   );
 
+  // Also fetch when mongoUserId first becomes available
+  useEffect(() => {
+    if (mongoUserId && !mongoUserLoading) {
+      refreshLists();
+    }
+  }, [mongoUserId, mongoUserLoading, refreshLists]);
+
+  // Debug: Log lists state changes
+  useEffect(() => {
+    console.log('Lists state updated:', lists.length, 'lists');
+  }, [lists]);
+
+  // Memoized values
   const tasksArray = useMemo(() => Object.values(tasks), [tasks]);
+  
   const allTagLabels = useMemo(
     () => Array.from(new Set(tasksArray.flatMap(task => (task.tags ?? []).map(tag => tag.label)))),
     [tasksArray]
@@ -184,14 +108,13 @@ const TasksPage = () => {
     return options;
   }, [usersMap, mongoUserId]);
 
+  // Filter functions
   const matchesAssignee = useCallback((task: Task) => {
     return assigneeFilter === 'ALL' ? true : task.assignedToId === assigneeFilter;
   }, [assigneeFilter]);
 
   const matchesTags = useCallback((task: Task) => {
-    if (selectedTagLabels.length === 0) {
-      return true;
-    }
+    if (selectedTagLabels.length === 0) return true;
     const labels = new Set((task.tags || []).map(tag => tag.label));
     return tagMatchAll
       ? selectedTagLabels.every(label => labels.has(label))
@@ -203,21 +126,40 @@ const TasksPage = () => {
     [tasksArray, matchesAssignee, matchesTags]
   );
 
-  const incompleteTasks = useMemo(() => filteredTasks.filter(task => !task.completed), [filteredTasks]);
-  const completedTasks = useMemo(() => filteredTasks.filter(task => task.completed), [filteredTasks]);
-  const noTasks = filteredTasks.length === 0;
+  // Get all task IDs that are in any list
+  const taskIdsInLists = useMemo(
+    () => new Set(lists.flatMap(list => list.taskIds || [])),
+    [lists]
+  );
 
+  // Filter out tasks that are in any list from the main tasks view
+  const tasksNotInLists = useMemo(
+    () => filteredTasks.filter(task => !taskIdsInLists.has(task.id)),
+    [filteredTasks, taskIdsInLists]
+  );
+
+  const incompleteTasks = useMemo(() => tasksNotInLists.filter(task => !task.completed), [tasksNotInLists]);
+  const completedTasks = useMemo(() => tasksNotInLists.filter(task => task.completed), [tasksNotInLists]);
+  const noTasks = tasksNotInLists.length === 0 && lists.length === 0;
+
+  // Helper functions
   const getAssignedUserName = useCallback((assignedToId?: string) => {
-    if (!assignedToId || assignedToId === mongoUserId) {
-      return 'You';
-    }
+    if (!assignedToId || assignedToId === mongoUserId) return 'You';
     return usersMap[assignedToId] || 'Unknown';
   }, [mongoUserId, usersMap]);
 
+  const getTasksInList = useCallback((listId: string) => {
+    const list = lists.find(l => l._id === listId);
+    if (!list) return [];
+    return tasksArray.filter(task => list.taskIds?.includes(task.id));
+  }, [lists, tasksArray]);
+
+  // Handlers
   const handleDueDateUpdate = useCallback(async (taskId: string, dueDate: string) => {
     await updateDueDate(taskId, dueDate);
     setEditingDueDateTaskId(null);
     setNewDueDate('');
+    setNewDueTime('');
   }, [updateDueDate]);
 
   const handleAddTask = useCallback(async (values: CreatableTaskValues) => {
@@ -227,144 +169,6 @@ const TasksPage = () => {
     }
   }, [addTask]);
 
-  // Add these states for list creation
-  const [listModalVisible, setListModalVisible] = useState(false);
-  const [newListName, setNewListName] = useState('');
-  const [isCreatingList, setIsCreatingList] = useState(false);
-  const [lists, setLists] = useState<any[]>([]);
-  const [showLists, setShowLists] = useState(true);
-  const [listCompletedVisible, setListCompletedVisible] = useState<{ [listId: string]: boolean }>({});
-
-  // Change selectedListId to expandedListId for in-place expansion
-  const [expandedListId, setExpandedListId] = useState<string | null>(null);
-
-  // Get all task IDs that are in any list
-  const taskIdsInLists = new Set(lists.flatMap(list => list.taskIds || []));
-  
-  // Filter out tasks that are in any list from the main tasks view
-  const tasksNotInLists = filteredTasks.filter(task => !taskIdsInLists.has(task.id));
-  
-  // Now calculate incomplete/completed from tasks NOT in lists
-  const incompleteTasks = tasksNotInLists.filter(task => !task.completed);
-  const completedTasks = tasksNotInLists.filter(task => task.completed);
-  const noTasks = tasksNotInLists.length === 0 && lists.length === 0;
-
-  // Get the expanded list object
-  const expandedList = lists.find(l => l._id === expandedListId);
-
-  // Get tasks that belong to the expanded list
-  const getTasksInList = (listId: string) => {
-    const list = lists.find(l => l._id === listId);
-    if (!list) return [];
-    return tasksArray.filter(task => list.taskIds?.includes(task.id));
-  };
-
-  // Update handleListPress to toggle expansion
-  const handleListPress = (listId: string) => {
-    setExpandedListId(prev => prev === listId ? null : listId);
-  };
-
-  // Add this function to create a new list
-  const handleCreateList = async () => {
-    if (!newListName.trim()) {
-      Alert.alert('Error', 'Please enter a list name');
-      return;
-    }
-    
-    setIsCreatingList(true);
-    try {
-      const newList = {
-        name: newListName.trim(),
-        taskIds: [],
-        userId: mongoUserId,
-        createdAt: new Date().toISOString(),
-      };
-      
-      const result = await createList(newList); // Changed from createUser to createList
-      console.log('List created:', result);
-      
-      // Add new list to state
-      setLists(prev => [...prev, result]);
-      
-      Alert.alert('Success', `List "${newListName}" created!`);
-      setListModalVisible(false);
-      setNewListName('');
-    } catch (error) {
-      console.error('Error creating list:', error);
-      Alert.alert('Error', 'Failed to create list');
-    } finally {
-      setIsCreatingList(false);
-    }
-  };
-
-  // Add function to fetch lists
-  const fetchLists = useCallback(async () => {
-    if (!mongoUserId) return;
-    try {
-      const userLists = await getListsByUserId(mongoUserId);
-      setLists(Array.isArray(userLists) ? userLists : []);
-    } catch (error) {
-      console.error('Error fetching lists:', error);
-      setLists([]);
-    }
-  }, [mongoUserId]);
-
-  // Fetch lists when mongoUserId is available
-  useFocusEffect(
-    useCallback(() => {
-      if (!mongoUserLoading && mongoUserId) {
-        fetchTasks();
-        fetchLists(); // Add this
-      }
-      return undefined;
-    }, [fetchTasks, fetchLists, mongoUserId, mongoUserLoading])
-  );
-
-  const handleDeleteList = async (listId: string) => {
-    try {
-      await deleteList(listId);
-      setLists(prev => prev.filter(l => l._id !== listId));
-    } catch (error) {
-      console.error('Error deleting list:', error);
-      Alert.alert('Error', 'Failed to delete list');
-    }
-  };
-
-  const handleRenameList = async (listId: string, newName: string) => {
-    try {
-      await updateListName(listId, newName);
-      setLists(prev => prev.map(l => 
-        l._id === listId ? { ...l, name: newName } : l
-      ));
-    } catch (error) {
-      console.error('Error renaming list:', error);
-      Alert.alert('Error', 'Failed to rename list');
-    }
-  };
-
-  const handleAddTaskToList = async (listId: string, taskId: string) => {
-    try {
-      const updatedList = await addTaskToList(listId, taskId);
-      setLists(prev => prev.map(l => 
-        l._id === listId ? { ...l, taskIds: updatedList.taskIds } : l
-      ));
-    } catch (error) {
-      console.error('Error adding task to list:', error);
-      Alert.alert('Error', 'Failed to add task to list');
-    }
-  };
-
-  const handleRemoveTaskFromList = async (listId: string, taskId: string) => {
-    try {
-      const updatedList = await removeTaskFromList(listId, taskId);
-      setLists(prev => prev.map(l => 
-        l._id === listId ? { ...l, taskIds: updatedList.taskIds } : l
-      ));
-    } catch (error) {
-      console.error('Error removing task from list:', error);
-      Alert.alert('Error', 'Failed to remove task from list');
-    }
-  };
   const handleToggleTag = useCallback((label: string) => {
     setSelectedTagLabels(prev => prev.includes(label)
       ? prev.filter(item => item !== label)
@@ -376,10 +180,55 @@ const TasksPage = () => {
     setNewDueDate(tasks[taskId]?.dueDate?.substring(0, 10) || '');
   }, [tasks]);
 
-  const renderCompletedSection = () => {
-    if (completedTasks.length === 0) {
-      return null;
+  const handleListPress = useCallback((listId: string) => {
+    setExpandedListId(prev => prev === listId ? null : listId);
+  }, []);
+
+  const handleCreateList = async () => {
+    const success = await createList(newListName);
+    if (success) {
+      setListModalVisible(false);
+      setNewListName('');
     }
+  };
+
+  // Render task card helper
+  const renderTaskCard = useCallback((task: Task) => (
+    <TaskCard
+      key={task.id}
+      task={task}
+      onToggleComplete={toggleTaskCompletion}
+      onDelete={deleteTask}
+      onToggleExpansion={toggleTaskExpansion}
+      onAddSubtask={addSubtask}
+      onToggleSubtask={toggleSubtaskCompletion}
+      onDeleteSubtask={deleteSubtask}
+      onEditSubtask={editSubtaskText}
+      assignedUserName={getAssignedUserName(task.assignedToId)}
+      onReassign={reassignTask}
+      isReassignLoading={isReassignLoading}
+      onUpdateTags={updateTaskTags}
+      onEditDueDate={handleOpenDueDateEditor}
+      editingDueDateTaskId={editingDueDateTaskId}
+      newDueDate={newDueDate}
+      setNewDueDate={setNewDueDate}
+      newDueTime={newDueTime}
+      setNewDueTime={setNewDueTime}
+      handleDueDateUpdate={handleDueDateUpdate}
+      onEditTask={editTask}
+      assigneeOptions={assigneeOptions}
+      updatingTaskId={updatingTaskId}
+    />
+  ), [
+    toggleTaskCompletion, deleteTask, toggleTaskExpansion, addSubtask,
+    toggleSubtaskCompletion, deleteSubtask, editSubtaskText, getAssignedUserName,
+    reassignTask, isReassignLoading, updateTaskTags, handleOpenDueDateEditor,
+    editingDueDateTaskId, newDueDate, newDueTime, handleDueDateUpdate,
+    editTask, assigneeOptions, updatingTaskId
+  ]);
+
+  const renderCompletedSection = () => {
+    if (completedTasks.length === 0) return null;
     return (
       <View style={styles.completedSection}>
         <TouchableOpacity
@@ -390,39 +239,11 @@ const TasksPage = () => {
           <Text style={styles.completedTitle}>
             Completed ({completedTasks.length})
           </Text>
-          <AntDesign
-            name={showCompleted ? 'up' : 'down'}
-            size={16}
-            color="#5A8A93"
-          />
+          <AntDesign name={showCompleted ? 'up' : 'down'} size={16} color="#5A8A93" />
         </TouchableOpacity>
         {showCompleted && (
           <View style={styles.completedList}>
-            {completedTasks.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onToggleComplete={toggleTaskCompletion}
-                onDelete={deleteTask}
-                onToggleExpansion={toggleTaskExpansion}
-                onAddSubtask={addSubtask}
-                onToggleSubtask={toggleSubtaskCompletion}
-                onDeleteSubtask={deleteSubtask}
-                onEditSubtask={editSubtaskText}
-                assignedUserName={getAssignedUserName(task.assignedToId)}
-                onReassign={reassignTask}
-                isReassignLoading={isReassignLoading}
-                onUpdateTags={updateTaskTags}
-                onEditDueDate={handleOpenDueDateEditor}
-                editingDueDateTaskId={editingDueDateTaskId}
-                newDueDate={newDueDate}
-                setNewDueDate={setNewDueDate}
-                handleDueDateUpdate={handleDueDateUpdate}
-                onEditTask={editTask}
-                assigneeOptions={assigneeOptions}
-                updatingTaskId={updatingTaskId}
-              />
-            ))}
+            {completedTasks.map(renderTaskCard)}
           </View>
         )}
       </View>
@@ -449,75 +270,40 @@ const TasksPage = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Filters */}
-        <View style={styles.filtersRow}>
-          <Menu
-            visible={assigneeMenuVisible}
-            onDismiss={() => setAssigneeMenuVisible(false)}
-            anchor={
-              <Button
-                mode="outlined"
-                onPress={() => setAssigneeMenuVisible(true)}
-                style={styles.filterButton}
-              >
-                Assigned: {assigneeFilter === 'ALL' ? 'All' : (assigneeFilter === mongoUserId ? 'You' : (usersMap[assigneeFilter] || 'Unknown'))}
-              </Button>
-            }
-          >
-            <Menu.Item onPress={() => { setAssigneeFilter('ALL'); setAssigneeMenuVisible(false); }} title="All" />
-            <Menu.Item onPress={() => { setAssigneeFilter(mongoUserId); setAssigneeMenuVisible(false); }} title="You" />
-            {Object.entries(usersMap).filter(([id]) => id !== mongoUserId).map(([id, name]) => (
-              <Menu.Item key={id} onPress={() => { setAssigneeFilter(id); setAssigneeMenuVisible(false); }} title={name} />
-            ))}
-          </Menu>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagsFilterScroll} style={{ flex: 1 }}>
-            {allTagLabels.map(label => {
-              const selected = selectedTagLabels.includes(label);
-              return (
-                <Chip
-                  key={label}
-                  selected={selected}
-                  onPress={() => setSelectedTagLabels(prev => selected ? prev.filter(l => l !== label) : [...prev, label])}
-                  style={[styles.tagFilterChip, selected && styles.tagFilterChipSelected]}
-                >
-                  {label}
-                </Chip>
-              );
-            })}
-          </ScrollView>
-          <View style={styles.matchToggle}>
-            <Text style={styles.matchToggleLabel}>{tagMatchAll ? 'All' : 'Any'}</Text>
-            <PaperSwitch value={tagMatchAll} onValueChange={setTagMatchAll} />
-          </View>
-        </View>
+        <TaskFilters
+          currentUserId={mongoUserId}
+          assigneeFilter={assigneeFilter}
+          assigneeOptions={assigneeOptions}
+          onChangeAssignee={setAssigneeFilter}
+          availableTagLabels={allTagLabels}
+          selectedTagLabels={selectedTagLabels}
+          onToggleTag={handleToggleTag}
+          tagMatchAll={tagMatchAll}
+          onToggleTagMatch={setTagMatchAll}
+        />
 
         <Text variant="headlineMedium" style={styles.title}>Tasks Page</Text>
 
-        {/* Lists Section with expandable tasks */}
-        {lists.length > 0 && (
-          <View style={styles.listsSection}>
-            <TouchableOpacity
-              style={styles.listsSectionHeader}
-              onPress={() => setShowLists(prev => !prev)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.listsSectionTitle}>
-                My Lists ({lists.length})
-              </Text>
-              <AntDesign
-                name={showLists ? 'up' : 'down'}
-                size={16}
-                color="#5A8A93"
-              />
-            </TouchableOpacity>
-            {showLists && (
-              <View style={styles.listsList}>
-                {lists.map(list => {
+        {/* Lists Section */}
+        <View style={styles.listsSection}>
+          <TouchableOpacity
+            style={styles.listsSectionHeader}
+            onPress={() => setShowLists(prev => !prev)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.listsSectionTitle}>My Lists ({lists.length})</Text>
+            <AntDesign name={showLists ? 'up' : 'down'} size={16} color="#5A8A93" />
+          </TouchableOpacity>
+          {showLists && (
+            <View style={styles.listsList}>
+              {lists.length === 0 ? (
+                <Text style={styles.emptyListText}>No lists yet. Create one below!</Text>
+              ) : (
+                lists.map(list => {
                   const isExpanded = expandedListId === list._id;
                   const listTasks = getTasksInList(list._id);
-                  const incompleteListTasks = listTasks.filter(t => !t.completed);
-                  const completedListTasks = listTasks.filter(t => t.completed);
+                  const incompleteListTasks = listTasks.filter((t: Task) => !t.completed);
+                  const completedListTasks = listTasks.filter((t: Task) => t.completed);
                   
                   return (
                     <View key={list._id}>
@@ -525,50 +311,25 @@ const TasksPage = () => {
                         list={list}
                         allTasks={tasksArray.map(t => ({ id: t.id, title: t.title }))}
                         onPress={handleListPress}
-                        onDelete={handleDeleteList}
-                        onRename={handleRenameList}
-                        onAddTask={handleAddTaskToList}
-                        onRemoveTask={handleRemoveTaskFromList}
+                        onDelete={deleteList}
+                        onRename={renameList}
+                        onAddTask={addTaskToList}
+                        onRemoveTask={removeTaskFromList}
                         isExpanded={isExpanded}
                       />
-                      {/* Expanded tasks for this list */}
                       {isExpanded && (
                         <View style={styles.expandedListTasks}>
                           {listTasks.length === 0 ? (
                             <Text style={styles.emptyListText}>No tasks in this list yet.</Text>
                           ) : (
                             <>
-                              {incompleteListTasks.map(task => (
-                                <TaskCard
-                                  key={task.id}
-                                  task={task}
-                                  onToggleComplete={toggleTask}
-                                  onDelete={deleteTask}
-                                  onToggleExpansion={toggleExpansion}
-                                  onAddSubtask={addSubtask}
-                                  onToggleSubtask={toggleSubtask}
-                                  onDeleteSubtask={deleteSubtask}
-                                  onEditSubtask={editSubtask}
-                                  assignedUserName={getAssignedUserName(task.assignedToId)}
-                                  onReassign={handleReassign}
-                                  isReassignLoading={reassignLoading}
-                                  onUpdateTags={handleUpdateTags}
-                                  onEditDueDate={(taskId: string) => {
-                                    setEditingDueDateTaskId(taskId);
-                                    setNewDueDate(tasks[taskId]?.dueDate?.substring(0, 10) || '');
-                                  }}
-                                  editingDueDateTaskId={editingDueDateTaskId}
-                                  newDueDate={newDueDate}
-                                  setNewDueDate={setNewDueDate}
-                                  handleDueDateUpdate={handleDueDateUpdate}
-                                />
-                              ))}
+                              {incompleteListTasks.map(renderTaskCard)}
                               {completedListTasks.length > 0 && (
                                 <TouchableOpacity
                                   style={styles.listCompletedHeader}
                                   onPress={() => setListCompletedVisible(prev => ({
                                     ...prev,
-                                    [list._id]: prev[list._id] === undefined ? false : !prev[list._id]
+                                    [list._id]: !prev[list._id]
                                   }))}
                                   activeOpacity={0.7}
                                 >
@@ -576,88 +337,24 @@ const TasksPage = () => {
                                     Completed ({completedListTasks.length})
                                   </Text>
                                   <AntDesign
-                                    name={listCompletedVisible[list._id] !== false ? 'up' : 'down'}
+                                    name={listCompletedVisible[list._id] ? 'up' : 'down'}
                                     size={14}
                                     color="#5A8A93"
                                   />
                                 </TouchableOpacity>
                               )}
-                              {listCompletedVisible[list._id] !== false && completedListTasks.map(task => (
-                                <TaskCard
-                                  key={task.id}
-                                  task={task}
-                                  onToggleComplete={toggleTask}
-                                  onDelete={deleteTask}
-                                  onToggleExpansion={toggleExpansion}
-                                  onAddSubtask={addSubtask}
-                                  onToggleSubtask={toggleSubtask}
-                                  onDeleteSubtask={deleteSubtask}
-                                  onEditSubtask={editSubtask}
-                                  assignedUserName={getAssignedUserName(task.assignedToId)}
-                                  onReassign={handleReassign}
-                                  isReassignLoading={reassignLoading}
-                                  onUpdateTags={handleUpdateTags}
-                                  onEditDueDate={(taskId: string) => {
-                                    setEditingDueDateTaskId(taskId);
-                                    setNewDueDate(tasks[taskId]?.dueDate?.substring(0, 10) || '');
-                                  }}
-                                  editingDueDateTaskId={editingDueDateTaskId}
-                                  newDueDate={newDueDate}
-                                  setNewDueDate={setNewDueDate}
-                                  handleDueDateUpdate={handleDueDateUpdate}
-                                />
-                              ))}
+                              {listCompletedVisible[list._id] && completedListTasks.map(renderTaskCard)}
                             </>
                           )}
                         </View>
                       )}
                     </View>
                   );
-                })}
-              </View>
-            )}
-          </View>
-      <TaskFilters
-        currentUserId={mongoUserId}
-        assigneeFilter={assigneeFilter}
-        assigneeOptions={assigneeOptions}
-        onChangeAssignee={setAssigneeFilter}
-        availableTagLabels={allTagLabels}
-        selectedTagLabels={selectedTagLabels}
-        onToggleTag={handleToggleTag}
-        tagMatchAll={tagMatchAll}
-        onToggleTagMatch={setTagMatchAll}
-      />
-
-      <Text variant="headlineMedium" style={styles.title}>Tasks Page</Text>
-
-      <FlatList
-        data={incompleteTasks}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TaskCard
-            task={item}
-            onToggleComplete={toggleTaskCompletion}
-            onDelete={deleteTask}
-            onToggleExpansion={toggleTaskExpansion}
-            onAddSubtask={addSubtask}
-            onToggleSubtask={toggleSubtaskCompletion}
-            onDeleteSubtask={deleteSubtask}
-            onEditSubtask={editSubtaskText}
-            assignedUserName={getAssignedUserName(item.assignedToId)}
-            onReassign={reassignTask}
-            isReassignLoading={isReassignLoading}
-            onUpdateTags={updateTaskTags}
-            onEditDueDate={handleOpenDueDateEditor}
-            editingDueDateTaskId={editingDueDateTaskId}
-            newDueDate={newDueDate}
-            setNewDueDate={setNewDueDate}
-            handleDueDateUpdate={handleDueDateUpdate}
-            onEditTask={editTask}
-            assigneeOptions={assigneeOptions}
-            updatingTaskId={updatingTaskId}
-          />
-        )}
+                })
+              )}
+            </View>
+          )}
+        </View>
 
         {/* All Tasks Section */}
         <View style={styles.allTasksSection}>
@@ -665,38 +362,14 @@ const TasksPage = () => {
             <Text style={styles.emptyState}>No tasks yet. Add your first one!</Text>
           ) : (
             <>
-              {incompleteTasks.map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onToggleComplete={toggleTask}
-                  onDelete={deleteTask}
-                  onToggleExpansion={toggleExpansion}
-                  onAddSubtask={addSubtask}
-                  onToggleSubtask={toggleSubtask}
-                  onDeleteSubtask={deleteSubtask}
-                  onEditSubtask={editSubtask}
-                  assignedUserName={getAssignedUserName(task.assignedToId)}
-                  onReassign={handleReassign}
-                  isReassignLoading={reassignLoading}
-                  onUpdateTags={handleUpdateTags}
-                  onEditDueDate={(taskId: string) => {
-                    setEditingDueDateTaskId(taskId);
-                    setNewDueDate(tasks[taskId]?.dueDate?.substring(0, 10) || '');
-                  }}
-                  editingDueDateTaskId={editingDueDateTaskId}
-                  newDueDate={newDueDate}
-                  setNewDueDate={setNewDueDate}
-                  handleDueDateUpdate={handleDueDateUpdate}
-                />
-              ))}
+              {incompleteTasks.map(renderTaskCard)}
               {renderCompletedSection()}
             </>
           )}
         </View>
       </ScrollView>
 
-      {/* Buttons Row - Fixed at bottom */}
+      {/* Buttons Row */}
       <View style={styles.buttonsRow}>
         <Button
           mode="contained"
@@ -717,29 +390,17 @@ const TasksPage = () => {
         </Button>
       </View>
 
+      {/* Add Task Modal */}
       <TaskModal
         mode="create"
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        onAdd={addTask}
-        taskTitle={taskTitle}
-        setTaskTitle={setTaskTitle}
-        taskText={taskText}
-        setTaskText={setTaskText}
-        taskPoints={taskPoints}
-        setTaskPoints={setTaskPoints}
-        assignEmail={assignEmail}
-        setAssignEmail={setAssignEmail}
-        isAssignLoading={isAssignLoading}
-        dueDate={dueDate}
-        setDueDate={setDueDate}
-        tags={tags}
-        setTags={setTags}
+        assigneeOptions={assigneeOptions}
         onSubmit={handleAddTask}
         isSaving={isCreatingTask}
       />
 
-      {/* Modal for creating a list */}
+      {/* Create List Modal */}
       <Modal
         visible={listModalVisible}
         transparent
@@ -780,7 +441,6 @@ const TasksPage = () => {
           </View>
         </View>
       </Modal>
-
     </KeyboardAvoidingView>
   );
 };
@@ -791,11 +451,13 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#D6ECF2',
   },
+  scrollView: {
+    flex: 1,
+  },
   title: {
     textAlign: 'center',
     marginBottom: 20,
   },
-  // loaderContainer removed
   emptyState: {
     textAlign: 'center',
     color: '#5A8A93',
@@ -875,39 +537,6 @@ const styles = StyleSheet.create({
   completedList: {
     marginTop: 8,
   },
-  reassignButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingVertical: 8,
-  },
-  filtersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  filterButton: {
-    marginRight: 8,
-    borderColor: '#9DBCC3',
-  },
-  tagsFilterScroll: {
-    paddingVertical: 4,
-  },
-  tagFilterChip: {
-    marginRight: 6,
-    backgroundColor: '#EAF6F9',
-  },
-  tagFilterChipSelected: {
-    backgroundColor: '#C7E6ED',
-  },
-  matchToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  matchToggleLabel: {
-    marginRight: 6,
-    color: '#5A8A93',
-  },
   listsSection: {
     marginBottom: 16,
   },
@@ -917,6 +546,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     paddingHorizontal: 4,
+    backgroundColor: '#EAF6F9',
+    borderRadius: 8,
   },
   listsSectionTitle: {
     fontSize: 16,
@@ -925,29 +556,6 @@ const styles = StyleSheet.create({
   },
   listsList: {
     marginTop: 8,
-  },
-  listHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#EAF6F9',
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  backButtonText: {
-    marginLeft: 6,
-    color: '#5A8A93',
-    fontWeight: '600',
-  },
-  listTitle: {
-    flex: 1,
-    color: '#2d4150',
   },
   expandedListTasks: {
     marginLeft: 16,
@@ -974,14 +582,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginTop: 8,
   },
-   scrollView: {
-    flex: 1,
-  },
   allTasksSection: {
     flex: 1,
     marginBottom: 10,
   },
-  
 });
 
 export default TasksPage;

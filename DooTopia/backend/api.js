@@ -9,7 +9,6 @@ export async function getUsers() {
     else {
         return { error: "No users found" };
     }
-    
 }
 
 export async function getUserById(id) {
@@ -205,12 +204,19 @@ export async function getListById(id) {
 }
 
 export async function getListsByUserId(userId) {
-    const response = await axios.get(`${API_URL}/lists/user/${userId}`);
-    if (response.status === 200) {
-        return response.data;
-    }
-    else {
-        return { error: "No lists found for this user" };
+    try {
+        const response = await axios.get(`${API_URL}/lists/user/${userId}`);
+        if (response.status === 200) {
+            return response.data;
+        }
+        return [];
+    } catch (error) {
+        // Return empty array if 404 (no lists found) instead of throwing
+        if (error.response && error.response.status === 404) {
+            return [];
+        }
+        console.error('Error fetching lists by user:', error);
+        return [];
     }
 }
 
