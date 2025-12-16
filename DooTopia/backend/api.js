@@ -181,6 +181,7 @@ export async function deleteReward(id) {
         return { error: "Reward deletion failed" };
     }
 }
+
 // list API***************************************************************************
 
 export async function getLists() {
@@ -203,6 +204,16 @@ export async function getListById(id) {
     }
 }
 
+export async function getListsByUserId(userId) {
+    const response = await axios.get(`${API_URL}/lists/user/${userId}`);
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "No lists found for this user" };
+    }
+}
+
 export async function createList(list) {
     const response = await axios.post(`${API_URL}/lists`, list);
     if (response.status === 201) {
@@ -213,13 +224,45 @@ export async function createList(list) {
     }
 }
 
-export async function updateList(id, list) {
-    const response = await axios.put(`${API_URL}/lists/${id}`, list);
-    if (response.status === 200) {
-        return response.data;
+export async function updateListName(id, name) {
+    try {
+        const response = await axios.put(`${API_URL}/lists/${id}`, { name });
+        if (response.status === 200) {
+            return response.data;
+        } else {
+            throw new Error('Failed to update list name');
+        }
+    } catch (error) {
+        console.error('Error updating list name:', error);
+        throw error;
     }
-    else {
-        return { error: "List update failed" };
+}
+
+export async function addTaskToList(listId, taskId) {
+    try {
+        const response = await axios.post(`${API_URL}/lists/${listId}/tasks`, { taskId });
+        if (response.status === 200) {
+            return response.data;
+        } else {
+            throw new Error('Failed to add task to list');
+        }
+    } catch (error) {
+        console.error('Error adding task to list:', error);
+        throw error;
+    }
+}
+
+export async function removeTaskFromList(listId, taskId) {
+    try {
+        const response = await axios.delete(`${API_URL}/lists/${listId}/tasks/${taskId}`);
+        if (response.status === 200) {
+            return response.data;
+        } else {
+            throw new Error('Failed to remove task from list');
+        }
+    } catch (error) {
+        console.error('Error removing task from list:', error);
+        throw error;
     }
 }
 
@@ -232,7 +275,6 @@ export async function deleteList(id) {
         return { error: "List deletion failed" };
     }
 }
-
 
 // subtask API***************************************************************************
 export async function getSubtasks() {
