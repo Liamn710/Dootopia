@@ -1,5 +1,6 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { deleteUser as firebaseDeleteUser, sendPasswordResetEmail, signOut } from 'firebase/auth';
+import { useCallback, useState } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Avatar, Button, Text } from 'react-native-paper';
 import { deleteUser as deleteUserApi, getMongoUserByFirebaseId } from '../../backend/api';
@@ -7,6 +8,34 @@ import { auth } from '../../FirebaseConfig';
 
 const ProfilePage = () => {
   const router = useRouter();
+  const [mongoProfile, setMongoProfile] = useState<any | null>(null);
+  const [profileLoading, setProfileLoading] = useState<boolean>(true);
+
+  const loadProfile = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      setMongoProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+
+    try {
+      setProfileLoading(true);
+      const mongoUser = await getMongoUserByFirebaseId(user.uid);
+      setMongoProfile(mongoUser);
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      Alert.alert('Error', 'Unable to load profile information.');
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
 
   const handleSignOut = async () => {
@@ -28,10 +57,14 @@ const ProfilePage = () => {
       // Delete from Firebase Auth
       await firebaseDeleteUser(user);
 
-      // Get MongoDB user ID
-      const mongoUser = await getMongoUserByFirebaseId(user.uid);
-      if (mongoUser && mongoUser._id) {
-        await deleteUserApi(mongoUser._id);
+      let mongoUserId = mongoProfile?._id;
+      if (!mongoUserId) {
+        const mongoUser = await getMongoUserByFirebaseId(user.uid);
+        mongoUserId = mongoUser?._id;
+      }
+
+      if (mongoUserId) {
+        await deleteUserApi(mongoUserId);
       }
 
       Alert.alert('Account Deleted', 'Your account has been deleted.');
@@ -58,17 +91,30 @@ const ProfilePage = () => {
   };
 
   const onAvatarPress = () => {
-    //go to store page at the moment
     router.push("/screens/OwnedAvatarsPage");
   };
+
+  const avatarUri = mongoProfile?.selectedAvatarUrl
+    || 'https://gravatar.com/avatar/0afa0df4b91f1d47fe6e607745d35b36?s=400&d=robohash&r=x';
+
+  const profileName = mongoProfile?.name
+    || auth.currentUser?.displayName
+    || auth.currentUser?.email
+    || 'Profile';
 
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={onAvatarPress}>
-        <Avatar.Image size={100} source={{ uri: 'https://gravatar.com/avatar/0afa0df4b91f1d47fe6e607745d35b36?s=400&d=robohash&r=x' }} />
+        <Avatar.Image
+          size={110}
+          source={{ uri: avatarUri }}
+          style={styles.avatar}
+        />
       </TouchableOpacity>
-      <Text variant="headlineMedium">Profile Page</Text>
-      <Text>User profile content will go here</Text>
+      <Text variant="headlineMedium" style={styles.primaryText}>{profileName}</Text>
+      <Text style={styles.secondaryText}>{mongoProfile?.email || auth.currentUser?.email || ''}</Text>
+      <Text style={styles.pointsText}>Points: {mongoProfile?.points ?? 0}</Text>
+      {profileLoading && <Text style={styles.loadingText}>Refreshing profile...</Text>}
       <Button mode="contained" onPress={handleSignOut} style={{ marginTop: 20 }}>
         Logout
       </Button>
@@ -92,6 +138,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  avatar: {
+    marginBottom: 12,
+  },
+  primaryText: {
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  secondaryText: {
+    color: '#666',
+    marginTop: 4,
+  },
+  pointsText: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  loadingText: {
+    marginTop: 8,
+    color: '#999',
   },
   deleteButtonContainer: {
     position: 'absolute',

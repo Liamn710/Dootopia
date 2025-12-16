@@ -1,14 +1,17 @@
 import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Avatar, Button, Card, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
-import { getMongoUserByFirebaseId, getPrizes } from '../../backend/api';
+import { getMongoUserByFirebaseId, getPrizes, selectUserAvatar } from '../../backend/api';
 
 const OwnedAvatarsPage = () => {
   const [avatars, setAvatars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mongoUserId, setMongoUserId] = useState('');
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
+  const [updatingAvatarId, setUpdatingAvatarId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -17,6 +20,8 @@ const OwnedAvatarsPage = () => {
         const user = auth.currentUser;
         if (!user) return;
         const mongoUser = await getMongoUserByFirebaseId(user.uid);
+        setMongoUserId(mongoUser?._id ?? '');
+        setSelectedAvatarId(mongoUser?.selectedAvatarId ?? null);
         const inventory = Array.isArray(mongoUser.inventory) ? mongoUser.inventory : [];
         const allPrizes = await getPrizes();
         // Filter only prizes the user owns
@@ -30,6 +35,27 @@ const OwnedAvatarsPage = () => {
     };
     fetchAvatars();
   }, []);
+
+  const handleSelectAvatar = async (avatarId: string) => {
+    if (!mongoUserId) {
+      Alert.alert('Error', 'Could not determine your user profile.');
+      return;
+    }
+    if (avatarId === selectedAvatarId || updatingAvatarId) {
+      return;
+    }
+
+    try {
+      setUpdatingAvatarId(avatarId);
+      await selectUserAvatar(mongoUserId, avatarId);
+      setSelectedAvatarId(avatarId);
+    } catch (error) {
+      console.error('Failed to update avatar', error);
+      Alert.alert('Error', 'Unable to update avatar. Please try again.');
+    } finally {
+      setUpdatingAvatarId(null);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -74,13 +100,31 @@ const OwnedAvatarsPage = () => {
         ) : (
           <View style={styles.avatarGrid}>
             {avatars.map(avatar => (
-              <Card key={avatar._id} style={styles.card}>
+              <Card
+                key={avatar._id}
+                style={[styles.card, avatar._id === selectedAvatarId && styles.cardSelected]}
+              >
                 <Card.Content style={styles.cardContent}>
-                  <View style={styles.avatarWrapper}>
+                  <View style={[styles.avatarWrapper, avatar._id === selectedAvatarId && styles.avatarWrapperSelected]}>
                     <Avatar.Image size={80} source={{ uri: avatar.imageUrl }} />
                   </View>
                   <Text style={styles.avatarTitle}>{avatar.title}</Text>
                   <Text style={styles.avatarSubtitle}>{avatar.subtitle}</Text>
+                  <Button
+                    mode={avatar._id === selectedAvatarId ? 'contained' : 'outlined'}
+                    style={styles.selectButton}
+                    onPress={() => handleSelectAvatar(avatar._id)}
+                    disabled={avatar._id === selectedAvatarId || updatingAvatarId === avatar._id}
+                    loading={updatingAvatarId === avatar._id}
+                    buttonColor={avatar._id === selectedAvatarId ? '#FF8C42' : undefined}
+                    textColor={avatar._id === selectedAvatarId ? '#fff' : undefined}
+                  >
+                    {avatar._id === selectedAvatarId
+                      ? 'In Use'
+                      : updatingAvatarId === avatar._id
+                      ? 'Setting...'
+                      : 'Use Avatar'}
+                  </Button>
                 </Card.Content>
               </Card>
             ))}
@@ -169,6 +213,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     backgroundColor: '#fff',
   },
+  cardSelected: {
+    borderWidth: 2,
+    borderColor: '#FF8C42',
+  },
   cardContent: {
     alignItems: 'center',
     paddingVertical: 16,
@@ -180,6 +228,9 @@ const styles = StyleSheet.create({
     padding: 3,
     marginBottom: 8,
   },
+  avatarWrapperSelected: {
+    borderColor: '#FF8C42',
+  },
   avatarTitle: {
     marginTop: 8,
     fontWeight: 'bold',
@@ -190,6 +241,11 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 12,
     textAlign: 'center',
+  },
+  selectButton: {
+    marginTop: 12,
+    alignSelf: 'stretch',
+    borderRadius: 12,
   },
 });
 

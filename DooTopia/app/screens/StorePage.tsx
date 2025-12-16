@@ -6,12 +6,21 @@ import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { auth } from "../../FirebaseConfig";
 import { StoreCard } from "../components/StoreCard";
 
+type StorePrize = {
+  _id: string;
+  title: string;
+  subtitle?: string;
+  content?: string;
+  price: number;
+  imageUrl?: string;
+};
+
 export default function StorePage() {
   const [userPoints, setUserPoints] = useState(150);
   const [mongoUserId, setMongoUserId] = useState("");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [prizes, setPrizes] = useState([]);
+  const [prizes, setPrizes] = useState<StorePrize[]>([]);
   const [inventory, setInventory] = useState<string[]>([]);
   const router = useRouter();
 

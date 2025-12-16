@@ -2,7 +2,7 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { useFocusEffect } from '@react-navigation/native';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View, FlatList } from 'react-native';
 import { Button, Chip, Menu, Switch as PaperSwitch, Text } from 'react-native-paper';
 import {
   addTaskToList,
@@ -29,30 +29,19 @@ import { auth } from '../../FirebaseConfig';
 import AddTaskModal from '../components/AddTaskModal';
 import ListCard from '../components/ListCard'; // Add this import
 import TaskCard from '../components/TaskCard';
-import type { Subtask } from '../types/Subtask';
-import type { Tag as TagItem, Task, TaskDictionary } from '../types/Task';
+import TaskFilters from '../components/TaskFilters';
+import TaskModal, { type AssigneeOption, type CreatableTaskValues } from '../components/TaskModal';
+import useCurrentUser from '../hooks/useCurrentUser';
+import useTasksData from '../hooks/useTasksData';
+import useUsersMap from '../hooks/useUsersMap';
+import type { Task } from '../types/Task';
 
 const TasksPage = () => {
-  const [tasks, setTasks] = useState<TaskDictionary>({});
-  const [mongoUserId, setMongoUserId] = useState<string>('');
-  const [mongoUserLoading, setMongoUserLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [taskTitle, setTaskTitle] = useState('');
-  const [taskText, setTaskText] = useState('');
-  const [taskPoints, setTaskPoints] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
-  const [assignEmail, setAssignEmail] = useState('');
-  const [isAssignLoading, setIsAssignLoading] = useState(false);
-  const [reassignLoading, setReassignLoading] = useState(false);
-  const [usersMap, setUsersMap] = useState<{ [id: string]: string }>({});
-  const [userId, setUserId] = useState<string | null>(null);
-  const [dueDate, setDueDate] = useState('');
-  const [tags, setTags] = useState<TagItem[]>([]);
   const [editingDueDateTaskId, setEditingDueDateTaskId] = useState<string | null>(null);
   const [newDueDate, setNewDueDate] = useState<string>('');
-  // Filters
   const [assigneeFilter, setAssigneeFilter] = useState<string>('ALL');
-  const [assigneeMenuVisible, setAssigneeMenuVisible] = useState(false);
   const [selectedTagLabels, setSelectedTagLabels] = useState<string[]>([]);
   const [tagMatchAll, setTagMatchAll] = useState<boolean>(false);
   const tasksArray: Task[] = Object.values(tasks);
@@ -147,388 +136,96 @@ const TasksPage = () => {
     fetchUsers();
   }, []);
 
-  const fetchTasks = useCallback(async () => {
-    if (!mongoUserId) {
-      return;
-    }
-    try {
-      const [tasksData, subtasksData] = await Promise.all([
-        getTasks(),
-        getSubtasks() // Fetch all subtasks
-      ]);
+  const { mongoUserId, mongoUserLoading } = useCurrentUser();
+  const { usersMap } = useUsersMap();
+  const {
+    tasks,
+    refreshTasks,
+    addTask,
+    addSubtask,
+    toggleTaskCompletion,
+    toggleSubtaskCompletion,
+    toggleTaskExpansion,
+    deleteTask,
+    deleteSubtask,
+    editSubtaskText,
+    updateDueDate,
+    reassignTask,
+    updateTaskTags,
+    editTask,
+    isCreatingTask,
+    isReassignLoading,
+    updatingTaskId,
+  } = useTasksData(mongoUserId);
 
-      if (!Array.isArray(tasksData)) {
-        throw new Error('Unexpected response when fetching tasks');
-      }
-
-      const formattedTasks = tasksData
-        .filter(task => task.assignedToId === mongoUserId || task.userId === mongoUserId)
-        .reduce((acc: { [id: string]: Task }, task: any) => {
-          const taskId = task._id ?? task.id;
-          if (!taskId) {
-            return acc;
-          }
-
-          // Find subtasks for this task
-          const taskSubtasks = subtasksData
-            .filter((subtask: any) => subtask.parentTaskId === taskId)
-            .map((subtask: any) => ({
-              id: subtask._id,
-              text: subtask.text || subtask.title,
-              completed: subtask.completed || false,
-            }));
-
-          // Normalize tags from backend: may be strings or objects
-          const normalizedTags: TagItem[] = Array.isArray(task.tags)
-            ? task.tags.map((t: any) => typeof t === 'string' ? ({ label: t }) : ({ label: t.label ?? String(t), color: t.color }))
-            : [];
-
-          acc[taskId as string] = {
-            id: taskId as string,
-            title: task.title ?? 'Untitled Task',
-            text: task.text ?? '',
-            points: Number(task.points) || 0,
-            completed: Boolean(task.completed),
-            subtasks: taskSubtasks, // Use subtasks from MongoDB
-            expanded: false,
-            assignedToId: task.assignedToId,
-            dueDate: task.dueDate,
-            tags: normalizedTags,
-          };
-          return acc;
-        }, {} as TaskDictionary);
-
-      setTasks(formattedTasks);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    }
-  }, [mongoUserId]);
-
-  // Only fetch tasks after mongoUserId is loaded and not loading
   useFocusEffect(
     useCallback(() => {
       if (!mongoUserLoading && mongoUserId) {
-        fetchTasks();
+        refreshTasks();
       }
       return undefined;
-    }, [fetchTasks, mongoUserId, mongoUserLoading])
+    }, [mongoUserId, mongoUserLoading, refreshTasks])
   );
 
-  const addTask = async (emailToAssign: string) => {
-    if (!mongoUserId) {
-      console.warn("Mongo user ID not loaded yet!");
-      return;
-    }
-    setIsAssignLoading(true);
-    let assignToId = mongoUserId;
-    if (emailToAssign && emailToAssign !== "") {
-      try {
-        const assignedUser = await getMongoUserByEmail(emailToAssign);
-        if (assignedUser && assignedUser._id) {
-          assignToId = assignedUser._id;
-        } else {
-          Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
-        }
-      } catch (error) {
-        Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
-      }
-    }
+  const tasksArray = useMemo(() => Object.values(tasks), [tasks]);
+  const allTagLabels = useMemo(
+    () => Array.from(new Set(tasksArray.flatMap(task => (task.tags ?? []).map(tag => tag.label)))),
+    [tasksArray]
+  );
 
-    let taskObject = {
-      title: taskTitle,
-      text: taskText,
-      completed: false,
-      createdAt: new Date().toISOString(),
-      points: Number(taskPoints),
-      userId: mongoUserId,
-      assignedToId: assignToId,
-      dueDate: dueDate || undefined,
-      tags: Array.isArray(tags) ? tags.map(t => ({ label: t.label, color: t.color })) : [],
-    };
-
-    const result = await createTask(taskObject);
-
-    const newTask: Task = {
-      title: taskTitle,
-      points: Number(taskPoints),
-      id: result._id,
-      text: taskText,
-      completed: false,
-      subtasks: [],
-      expanded: false,
-      assignedToId: result.assignedToId,
-      dueDate: result.dueDate || undefined,
-      tags: Array.isArray(result.tags)
-        ? result.tags.map((t: any) => typeof t === 'string' ? ({ label: t }) : ({ label: t.label ?? String(t), color: t.color }))
-        : (Array.isArray(tags) ? tags : []),
-    };
-    setTasks(prevTasks => ({
-      ...prevTasks,
-      [newTask.id]: newTask
+  const assigneeOptions: AssigneeOption[] = useMemo(() => {
+    const options = Object.entries(usersMap).map(([id, name]) => ({
+      id,
+      label: id === mongoUserId ? 'You' : (name || 'Unknown'),
     }));
-    setModalVisible(false);
-    setTaskTitle('');
-    setTaskText('');
-    setTaskPoints('');
-    setAssignEmail('');
-    setIsAssignLoading(false);
-    setDueDate('');
-    setTags([]);
-  };
-  const addSubtask = async (taskId: string, subtaskText: string) => { 
-    if (!subtaskText.trim()) {
-      Alert.alert('Error', 'Please enter subtask text');
-      return;
+    if (mongoUserId && !options.some(option => option.id === mongoUserId)) {
+      options.unshift({ id: mongoUserId, label: 'You' });
     }
+    return options;
+  }, [usersMap, mongoUserId]);
 
-    console.log('=== DEBUGGING SUBTASK CREATION ===');
-    console.log('TaskId received:', taskId);
-    console.log('Task from state:', tasks[taskId]);
-    console.log('All tasks keys:', Object.keys(tasks));
-    console.log('MongoDB User ID:', mongoUserId);
+  const matchesAssignee = useCallback((task: Task) => {
+    return assigneeFilter === 'ALL' ? true : task.assignedToId === assigneeFilter;
+  }, [assigneeFilter]);
 
-    try {
-      // Create the subtask object for the API
-      const subtaskForApi = {
-        title: subtaskText.trim(),
-        text: subtaskText.trim(),
-        parentTaskId: taskId, // This should be the MongoDB _id
-        completed: false,
-        createdAt: new Date().toISOString(),
-        points: 0,
-        userId: mongoUserId,
-      };
-
-      console.log('Subtask object to send:', subtaskForApi);
-
-      // Call your API to create the subtask in MongoDB
-      const result = await createSubtask(subtaskForApi);
-      
-      console.log('Subtask creation result:', result);
-      
-      // Update local state with the actual subtask from MongoDB
-      const finalSubtask: Subtask = {
-        id: result._id, // Use MongoDB's _id
-        text: result.text || result.title, // Use text or fall back to title
-        completed: result.completed,
-      };
-
-      setTasks(prevTasks => {
-        const task = prevTasks[taskId];
-        if (task) {
-          return {
-            ...prevTasks,
-            [taskId]: {
-              ...task,
-              subtasks: [...task.subtasks, finalSubtask],
-            },
-          };
-        }
-        return prevTasks;
-      });
-    } catch (error) {
-      console.error('Error creating subtask:', error);
-      Alert.alert('Error', 'Failed to create subtask');
+  const matchesTags = useCallback((task: Task) => {
+    if (selectedTagLabels.length === 0) {
+      return true;
     }
-   };
+    const labels = new Set((task.tags || []).map(tag => tag.label));
+    return tagMatchAll
+      ? selectedTagLabels.every(label => labels.has(label))
+      : selectedTagLabels.some(label => labels.has(label));
+  }, [selectedTagLabels, tagMatchAll]);
 
+  const filteredTasks = useMemo(
+    () => tasksArray.filter(task => matchesAssignee(task) && matchesTags(task)),
+    [tasksArray, matchesAssignee, matchesTags]
+  );
 
-  const toggleTask = async (taskId: string) => { 
-  setTasks(prevTasks => {
-    const task = prevTasks[taskId];
-    if (task && taskId) {
-      const updatedTask = {
-        ...task,
-        completed: !task.completed,
-      };
+  const incompleteTasks = useMemo(() => filteredTasks.filter(task => !task.completed), [filteredTasks]);
+  const completedTasks = useMemo(() => filteredTasks.filter(task => task.completed), [filteredTasks]);
+  const noTasks = filteredTasks.length === 0;
 
-      // Update task in backend
-      updateTask(taskId, { completed: updatedTask.completed });
-
-      // Calculate new points for user
-      const pointsChange = updatedTask.completed ? task.points : -task.points;
-
-      // Update user points in backend
-      updateUser(mongoUserId, { $inc: { points: pointsChange } });
-
-      return {
-        ...prevTasks,
-        [taskId]: updatedTask,
-      };
+  const getAssignedUserName = useCallback((assignedToId?: string) => {
+    if (!assignedToId || assignedToId === mongoUserId) {
+      return 'You';
     }
-    return prevTasks;
-  });
-};
+    return usersMap[assignedToId] || 'Unknown';
+  }, [mongoUserId, usersMap]);
 
-  const toggleSubtask = async (taskId: string, subtaskId: string) => {
-    setTasks(prevTasks => {
-      const task = prevTasks[taskId];
-      if (task) {
-        const updatedSubtasks = task.subtasks.map(subtask => {
-          if (subtask.id === subtaskId) {
-            const updatedSubtask = { ...subtask, completed: !subtask.completed };
-            
-            // Update subtask in backend with ALL required fields INCLUDING parentTaskId
-            updateSubtask(subtaskId, { 
-              title: updatedSubtask.text, // Send the text as title
-              text: updatedSubtask.text,  // Send the text
-              completed: updatedSubtask.completed,
-              parentTaskId: taskId, // ADD THIS LINE - preserve the parent task ID
-            })
-              .catch(error => {
-                console.error('Failed to update subtask in backend:', error);
-              });
-            
-            return updatedSubtask;
-          }
-          return subtask;
-        });
-        
-        return {
-          ...prevTasks,
-          [taskId]: {
-            ...task,
-            subtasks: updatedSubtasks,
-          },
-        };
-      }
-      return prevTasks;
-    });
-  };
+  const handleDueDateUpdate = useCallback(async (taskId: string, dueDate: string) => {
+    await updateDueDate(taskId, dueDate);
+    setEditingDueDateTaskId(null);
+    setNewDueDate('');
+  }, [updateDueDate]);
 
-  const toggleExpansion = (taskId: string) => {
-    setTasks(prevTasks => {
-      const task = prevTasks[taskId];
-      if (task) {
-        return {
-          ...prevTasks,
-          [taskId]: {
-            ...task,
-            expanded: !task.expanded,
-          },
-        };
-      }
-      return prevTasks;
-    });
-  };
-
-  //TODO : Make asyc in order to delete from backend as well as make it const
-  const deleteTask = async (taskId: string) => {
-    try {
-      await deleteTaskApi(taskId);
-      setTasks(prev => {
-        const { [taskId]: _removed, ...rest } = prev;
-        return rest;
-      });
-    } catch (err) {
-      console.error('Failed to delete task', err);
+  const handleAddTask = useCallback(async (values: CreatableTaskValues) => {
+    const wasSuccessful = await addTask(values);
+    if (wasSuccessful) {
+      setModalVisible(false);
     }
-  };
-
-  //TODO : Make asyc in order to delete from backend as well as make it const
-  const deleteSubtask = async (taskId: string, subtaskId: string) => {
-    try {
-      await deleteSubtaskApi(subtaskId);
-      setTasks(prev => {
-        const task = prev[taskId];
-        if (!task) return prev;
-        return {
-          ...prev,
-          [taskId]: {
-            ...task,
-            subtasks: task.subtasks.filter(subtask => subtask.id !== subtaskId),
-          },
-        };
-      });
-    } catch (err) {
-      console.error('Failed to delete subtask', err);
-    }
-  };
-
-  const editSubtask = (taskId: string, subtaskId: string, newText: string) => {
-    setTasks(prevTasks => {
-      const task = prevTasks[taskId];
-      if (task) {
-        const updatedSubtasks = task.subtasks.map(subtask =>
-          subtask.id === subtaskId ? { ...subtask, text: newText } : subtask
-        );
-        return {
-          ...prevTasks,
-          [taskId]: {
-            ...task,
-            subtasks: updatedSubtasks,
-          },
-        };
-      }
-      return prevTasks;
-    });
-  };  
-  
-  const handleDueDateUpdate = async (taskId: string, dueDate: string) => {
-    try {
-      await updateTask(taskId, { dueDate });
-      setTasks(prevTasks => ({
-        ...prevTasks,
-        [taskId]: {
-          ...prevTasks[taskId],
-          dueDate,
-        }
-      }));
-      setEditingDueDateTaskId(null);
-      setNewDueDate('');
-    } catch (err) {
-      Alert.alert('Error', 'Failed to update due date.');
-    }
-  };
-
-  // Assignment handler for TaskCard
-  const handleReassign = async (taskId: string, email: string) => {
-    setReassignLoading(true);
-    let newAssignedToId = mongoUserId;
-    if (email && email !== "") {
-      try {
-        const assignedUser = await getMongoUserByEmail(email);
-        if (assignedUser && assignedUser._id) {
-          newAssignedToId = assignedUser._id;
-        } else {
-          Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
-        }
-      } catch (error) {
-        Alert.alert('Error', 'No user found with that email. Assigning to yourself.');
-      }
-    }
-    await updateTask(taskId, { assignedToId: newAssignedToId });
-    setTasks(prevTasks => ({
-      ...prevTasks,
-      [taskId]: {
-        ...prevTasks[taskId]!,
-        assignedToId: newAssignedToId,
-      }
-    }));
-    setReassignLoading(false);
-  };
-
-  const getAssignedUserName = (assignedToId?: string) => {
-    if (!assignedToId || assignedToId === mongoUserId) return "You";
-    return usersMap[assignedToId] || "Unknown";
-  };
-
-  // Update tags handler: remove/add tags for existing tasks
-  const handleUpdateTags = async (taskId: string, updatedTags: TagItem[]) => {
-    try {
-      await updateTask(taskId, { tags: updatedTags.map(t => ({ label: t.label, color: t.color })) });
-      setTasks(prev => ({
-        ...prev,
-        [taskId]: {
-          ...prev[taskId],
-          tags: updatedTags,
-        }
-      }));
-    } catch (e) {
-      console.error('Failed to update tags', e);
-      Alert.alert('Error', 'Failed to update tags');
-    }
-  };
+  }, [addTask]);
 
   // Add these states for list creation
   const [listModalVisible, setListModalVisible] = useState(false);
@@ -668,6 +365,16 @@ const TasksPage = () => {
       Alert.alert('Error', 'Failed to remove task from list');
     }
   };
+  const handleToggleTag = useCallback((label: string) => {
+    setSelectedTagLabels(prev => prev.includes(label)
+      ? prev.filter(item => item !== label)
+      : [...prev, label]);
+  }, []);
+
+  const handleOpenDueDateEditor = useCallback((taskId: string) => {
+    setEditingDueDateTaskId(taskId);
+    setNewDueDate(tasks[taskId]?.dueDate?.substring(0, 10) || '');
+  }, [tasks]);
 
   const renderCompletedSection = () => {
     if (completedTasks.length === 0) {
@@ -695,25 +402,25 @@ const TasksPage = () => {
               <TaskCard
                 key={task.id}
                 task={task}
-                onToggleComplete={toggleTask}
+                onToggleComplete={toggleTaskCompletion}
                 onDelete={deleteTask}
-                onToggleExpansion={toggleExpansion}
+                onToggleExpansion={toggleTaskExpansion}
                 onAddSubtask={addSubtask}
-                onToggleSubtask={toggleSubtask}
+                onToggleSubtask={toggleSubtaskCompletion}
                 onDeleteSubtask={deleteSubtask}
-                onEditSubtask={editSubtask}
+                onEditSubtask={editSubtaskText}
                 assignedUserName={getAssignedUserName(task.assignedToId)}
-                onReassign={handleReassign}
-                isReassignLoading={reassignLoading}
-                onUpdateTags={handleUpdateTags}
-                onEditDueDate={(taskId: string) => {
-                  setEditingDueDateTaskId(taskId);
-                  setNewDueDate(tasks[taskId]?.dueDate?.substring(0, 10) || '');
-                }}
+                onReassign={reassignTask}
+                isReassignLoading={isReassignLoading}
+                onUpdateTags={updateTaskTags}
+                onEditDueDate={handleOpenDueDateEditor}
                 editingDueDateTaskId={editingDueDateTaskId}
                 newDueDate={newDueDate}
                 setNewDueDate={setNewDueDate}
                 handleDueDateUpdate={handleDueDateUpdate}
+                onEditTask={editTask}
+                assigneeOptions={assigneeOptions}
+                updatingTaskId={updatingTaskId}
               />
             ))}
           </View>
@@ -721,7 +428,6 @@ const TasksPage = () => {
       </View>
     );
   };
-
 
   if (mongoUserLoading) {
     return (
@@ -911,6 +617,46 @@ const TasksPage = () => {
               </View>
             )}
           </View>
+      <TaskFilters
+        currentUserId={mongoUserId}
+        assigneeFilter={assigneeFilter}
+        assigneeOptions={assigneeOptions}
+        onChangeAssignee={setAssigneeFilter}
+        availableTagLabels={allTagLabels}
+        selectedTagLabels={selectedTagLabels}
+        onToggleTag={handleToggleTag}
+        tagMatchAll={tagMatchAll}
+        onToggleTagMatch={setTagMatchAll}
+      />
+
+      <Text variant="headlineMedium" style={styles.title}>Tasks Page</Text>
+
+      <FlatList
+        data={incompleteTasks}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TaskCard
+            task={item}
+            onToggleComplete={toggleTaskCompletion}
+            onDelete={deleteTask}
+            onToggleExpansion={toggleTaskExpansion}
+            onAddSubtask={addSubtask}
+            onToggleSubtask={toggleSubtaskCompletion}
+            onDeleteSubtask={deleteSubtask}
+            onEditSubtask={editSubtaskText}
+            assignedUserName={getAssignedUserName(item.assignedToId)}
+            onReassign={reassignTask}
+            isReassignLoading={isReassignLoading}
+            onUpdateTags={updateTaskTags}
+            onEditDueDate={handleOpenDueDateEditor}
+            editingDueDateTaskId={editingDueDateTaskId}
+            newDueDate={newDueDate}
+            setNewDueDate={setNewDueDate}
+            handleDueDateUpdate={handleDueDateUpdate}
+            onEditTask={editTask}
+            assigneeOptions={assigneeOptions}
+            updatingTaskId={updatingTaskId}
+          />
         )}
 
         {/* All Tasks Section */}
@@ -971,8 +717,8 @@ const TasksPage = () => {
         </Button>
       </View>
 
-      {/* Modal for adding a task */}
-      <AddTaskModal
+      <TaskModal
+        mode="create"
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onAdd={addTask}
@@ -989,6 +735,8 @@ const TasksPage = () => {
         setDueDate={setDueDate}
         tags={tags}
         setTags={setTags}
+        onSubmit={handleAddTask}
+        isSaving={isCreatingTask}
       />
 
       {/* Modal for creating a list */}
