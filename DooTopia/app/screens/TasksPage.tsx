@@ -65,13 +65,14 @@ const TasksPage = () => {
     isCreatingList,
   } = useListsData(mongoUserId);
 
-  // Fetch tasks and lists when screen is focused
+  // Fetch tasks and lists when screen is focused (using cache if available)
   useFocusEffect(
     useCallback(() => {
       if (!mongoUserLoading && mongoUserId) {
-        console.log('TasksPage: Refreshing data for user:', mongoUserId);
-        refreshTasks();
-        refreshLists();
+        console.log('TasksPage: Loading data for user:', mongoUserId);
+        // Will use cache if available, otherwise fetch from server
+        refreshTasks(false);
+        refreshLists(false);
       }
       return undefined;
     }, [mongoUserId, mongoUserLoading, refreshTasks, refreshLists])
@@ -80,7 +81,7 @@ const TasksPage = () => {
   // Also fetch when mongoUserId first becomes available
   useEffect(() => {
     if (mongoUserId && !mongoUserLoading) {
-      refreshLists();
+      refreshLists(false); // Use cache if available
     }
   }, [mongoUserId, mongoUserLoading, refreshLists]);
 

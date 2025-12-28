@@ -5,16 +5,27 @@ import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Avatar, Button, Text } from 'react-native-paper';
 import { deleteUser as deleteUserApi, getMongoUserByFirebaseId } from '../../backend/api';
 import { auth } from '../../FirebaseConfig';
+import { useDataCache } from '../context/DataCacheContext';
 
 const ProfilePage = () => {
   const router = useRouter();
   const [mongoProfile, setMongoProfile] = useState<any | null>(null);
   const [profileLoading, setProfileLoading] = useState<boolean>(true);
+  
+  const { cache, setUserProfileCache, isUserProfileCached, clearAllCache } = useDataCache();
 
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async (forceRefresh: boolean = false) => {
     const user = auth.currentUser;
     if (!user) {
       setMongoProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+
+    // Use cached profile if available and not forcing refresh
+    if (!forceRefresh && isUserProfileCached() && cache.userProfile) {
+      console.log('ProfilePage: Using cached profile');
+      setMongoProfile(cache.userProfile);
       setProfileLoading(false);
       return;
     }
@@ -23,23 +34,25 @@ const ProfilePage = () => {
       setProfileLoading(true);
       const mongoUser = await getMongoUserByFirebaseId(user.uid);
       setMongoProfile(mongoUser);
+      setUserProfileCache(mongoUser); // Update cache
     } catch (error) {
       console.error('Failed to load profile:', error);
       Alert.alert('Error', 'Unable to load profile information.');
     } finally {
       setProfileLoading(false);
     }
-  }, []);
+  }, [isUserProfileCached, cache.userProfile, setUserProfileCache]);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfile();
+      loadProfile(false); // Use cache if available
     }, [loadProfile])
   );
 
 
   const handleSignOut = async () => {
     try {
+      clearAllCache(); // Clear all cached data on logout
       await signOut(auth);
       router.replace('/');
     } catch (error) {

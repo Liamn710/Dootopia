@@ -1,13 +1,14 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import {
-    addTaskToList as addTaskToListApi,
-    createList as createListApi,
-    deleteList as deleteListApi,
-    getListsByUserId,
-    removeTaskFromList as removeTaskFromListApi,
-    updateListName as updateListNameApi,
+  addTaskToList as addTaskToListApi,
+  createList as createListApi,
+  deleteList as deleteListApi,
+  getListsByUserId,
+  removeTaskFromList as removeTaskFromListApi,
+  updateListName as updateListNameApi,
 } from '../../backend/api.js';
+import { useDataCache } from '../context/DataCacheContext';
 
 export type List = {
   _id: string;
@@ -19,7 +20,7 @@ export type List = {
 
 export type UseListsDataResult = {
   lists: List[];
-  refreshLists: () => Promise<void>;
+  refreshLists: (forceRefresh?: boolean) => Promise<void>;
   createList: (name: string) => Promise<boolean>;
   deleteList: (listId: string) => Promise<void>;
   renameList: (listId: string, newName: string) => Promise<void>;
@@ -33,11 +34,36 @@ const useListsData = (mongoUserId: string): UseListsDataResult => {
   const [lists, setLists] = useState<List[]>([]);
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
 
-  const refreshLists = useCallback(async () => {
+  const { cache, setListsCache, isListsCached } = useDataCache();
+
+  // Load from cache on mount if available
+  useEffect(() => {
+    if (isListsCached() && cache.lists) {
+      setLists(cache.lists);
+    }
+    setHasMounted(true);
+  }, []);
+
+  // Sync lists to cache whenever they change (after initial load)
+  useEffect(() => {
+    if (hasMounted && lists.length > 0) {
+      setListsCache(lists);
+    }
+  }, [lists, hasMounted, setListsCache]);
+
+  const refreshLists = useCallback(async (forceRefresh: boolean = false) => {
     if (!mongoUserId) {
       console.log('useListsData.refreshLists: No mongoUserId, skipping');
       setLists([]);
+      return;
+    }
+
+    // Use cached data if available and not forcing refresh
+    if (!forceRefresh && isListsCached() && cache.lists) {
+      console.log('useListsData: Using cached lists');
+      setLists(cache.lists);
       return;
     }
 
@@ -50,6 +76,7 @@ const useListsData = (mongoUserId: string): UseListsDataResult => {
       // Handle both array response and error object response
       if (Array.isArray(userLists)) {
         setLists(userLists);
+        setListsCache(userLists); // Update cache
       } else if (userLists?.error) {
         // No lists found is not an error, just empty
         console.log('useListsData.refreshLists: No lists found or error:', userLists.error);
@@ -63,7 +90,7 @@ const useListsData = (mongoUserId: string): UseListsDataResult => {
     } finally {
       setIsLoading(false);
     }
-  }, [mongoUserId]);
+  }, [mongoUserId, isListsCached, cache.lists, setListsCache]);
 
   const createList = useCallback(async (name: string): Promise<boolean> => {
     if (!name.trim()) {
