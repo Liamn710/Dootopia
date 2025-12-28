@@ -1,10 +1,13 @@
 import { Stack } from "expo-router";
 import { PaperProvider } from "react-native-paper";
+import { DataCacheProvider } from "./context/DataCacheContext";
 
 export default function RootLayout() {
   return (
-    <PaperProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </PaperProvider>
+    <DataCacheProvider>
+      <PaperProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </PaperProvider>
+    </DataCacheProvider>
   );
 }
