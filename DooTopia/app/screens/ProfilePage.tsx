@@ -5,6 +5,7 @@ import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Avatar, Button, Text } from 'react-native-paper';
 import { deleteUser as deleteUserApi, getMongoUserByFirebaseId } from '../../backend/api';
 import { auth } from '../../FirebaseConfig';
+
 import useMongoUserProfile from '../hooks/useMongoUserProfile';
 
 const ProfilePage = () => {
@@ -28,11 +29,11 @@ const ProfilePage = () => {
         // Error handled inside hook; avoid showing stale fallback.
       });
     }, [refresh])
-  );
 
 
   const handleSignOut = async () => {
     try {
+      clearAllCache(); // Clear all cached data on logout
       await signOut(auth);
       router.replace('/');
     } catch (error) {
