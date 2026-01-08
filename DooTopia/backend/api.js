@@ -131,8 +131,9 @@ export async function deleteTask(id) {
 
 // reward API***************************************************************************
 
-export async function getRewards() {
-    const response = await axios.get(`${API_URL}/rewards`);
+export async function getRewards(userId) {
+    const url = userId ? `${API_URL}/rewards?userId=${userId}` : `${API_URL}/rewards`;
+    const response = await axios.get(url);
     if (response.status === 200) {
         return response.data;
     }

@@ -6,7 +6,12 @@ let rewardRoutes = express.Router();
 
 rewardRoutes.route("/rewards").get(async (request, response) => {
     let db = database.getdb();
-    let data = await db.collection("rewards").find({}).toArray();
+    const { userId } = request.query;
+    
+    // Build filter object - if userId is provided, filter by owner
+    const filter = userId ? { owner: userId } : {};
+    
+    let data = await db.collection("rewards").find(filter).toArray();
     if (data.length > 0) {
         response.status(200).json(data);
     } else {
