@@ -5,7 +5,6 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { Avatar, Button, Card, Text } from 'react-native-paper';
 import { auth } from '../../FirebaseConfig';
 import { getMongoUserByFirebaseId, getPrizes, selectUserAvatar } from '../../backend/api';
-import { useDataCache } from '../context/DataCacheContext';
 
 const OwnedAvatarsPage = () => {
   const [avatars, setAvatars] = useState<any[]>([]);
@@ -14,39 +13,17 @@ const OwnedAvatarsPage = () => {
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
   const [updatingAvatarId, setUpdatingAvatarId] = useState<string | null>(null);
   const router = useRouter();
-  
-  const { cache, setPrizesCache, isPrizesCached, setUserProfileCache, isUserProfileCached } = useDataCache();
 
   useEffect(() => {
     const fetchAvatars = async () => {
       try {
         const user = auth.currentUser;
         if (!user) return;
-        
-        // Try to use cached user profile
-        let mongoUser;
-        if (isUserProfileCached() && cache.userProfile) {
-          console.log('OwnedAvatarsPage: Using cached user profile');
-          mongoUser = cache.userProfile;
-        } else {
-          mongoUser = await getMongoUserByFirebaseId(user.uid);
-          setUserProfileCache(mongoUser);
-        }
-        
+        const mongoUser = await getMongoUserByFirebaseId(user.uid);
         setMongoUserId(mongoUser?._id ?? '');
         setSelectedAvatarId(mongoUser?.selectedAvatarId ?? null);
         const inventory = Array.isArray(mongoUser.inventory) ? mongoUser.inventory : [];
-        
-        // Try to use cached prizes
-        let allPrizes;
-        if (isPrizesCached() && cache.prizes) {
-          console.log('OwnedAvatarsPage: Using cached prizes');
-          allPrizes = cache.prizes;
-        } else {
-          allPrizes = await getPrizes();
-          setPrizesCache(allPrizes);
-        }
-        
+        const allPrizes = await getPrizes();
         // Filter only prizes the user owns
         const owned = allPrizes.filter((prize: any) => inventory.includes(prize._id));
         setAvatars(owned);

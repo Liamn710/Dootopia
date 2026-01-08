@@ -6,34 +6,40 @@ import { Avatar, Button, Text } from 'react-native-paper';
 import { deleteUser as deleteUserApi, getMongoUserByFirebaseId } from '../../backend/api';
 import { auth } from '../../FirebaseConfig';
 
-import useMongoUserProfile from '../hooks/useMongoUserProfile';
-
 const ProfilePage = () => {
   const router = useRouter();
-  const { profile, loading: profileLoading, refresh } = useMongoUserProfile(10 * 60 * 1000);
-  const [stableName, setStableName] = useState<string | null>(profile?.name ?? null);
-  const [stableAvatarUri, setStableAvatarUri] = useState<string | null>(profile?.selectedAvatarUrl ?? null);
+  const [mongoProfile, setMongoProfile] = useState<any | null>(null);
+  const [profileLoading, setProfileLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    if (profile?.name) {
-      setStableName(profile.name);
+  const loadProfile = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      setMongoProfile(null);
+      setProfileLoading(false);
+      return;
     }
-    if (profile?.selectedAvatarUrl) {
-      setStableAvatarUri(profile.selectedAvatarUrl);
+
+    try {
+      setProfileLoading(true);
+      const mongoUser = await getMongoUserByFirebaseId(user.uid);
+      setMongoProfile(mongoUser);
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      Alert.alert('Error', 'Unable to load profile information.');
+    } finally {
+      setProfileLoading(false);
     }
-  }, [profile]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      refresh(true).catch(() => {
-        // Error handled inside hook; avoid showing stale fallback.
-      });
-    }, [refresh])
+      loadProfile();
+    }, [loadProfile])
+  );
 
 
   const handleSignOut = async () => {
     try {
-      clearAllCache(); // Clear all cached data on logout
       await signOut(auth);
       router.replace('/');
     } catch (error) {

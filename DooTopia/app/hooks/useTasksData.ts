@@ -1,25 +1,24 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import {
-  createSubtask,
-  createTask,
-  deleteSubtask as deleteSubtaskApi,
-  deleteTask as deleteTaskApi,
-  getMongoUserByEmail,
-  getSubtasks,
-  getTasks,
-  updateSubtask,
-  updateTask,
-  updateUser,
+    createSubtask,
+    createTask,
+    deleteSubtask as deleteSubtaskApi,
+    deleteTask as deleteTaskApi,
+    getMongoUserByEmail,
+    getSubtasks,
+    getTasks,
+    updateSubtask,
+    updateTask,
+    updateUser,
 } from '../../backend/api';
 import type { CreatableTaskValues, EditableTaskValues } from '../components/TaskModal';
-import { useDataCache } from '../context/DataCacheContext';
 import type { Subtask } from '../types/Subtask';
 import type { Tag as TagItem, Task, TaskDictionary } from '../types/Task';
 
 export type UseTasksDataResult = {
   tasks: TaskDictionary;
-  refreshTasks: (forceRefresh?: boolean) => Promise<void>;
+  refreshTasks: () => Promise<void>;
   addTask: (values: CreatableTaskValues) => Promise<boolean>;
   addSubtask: (taskId: string, text: string) => Promise<void>;
   toggleTaskCompletion: (taskId: string) => void;
@@ -53,35 +52,10 @@ const useTasksData = (mongoUserId: string): UseTasksDataResult => {
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [isReassignLoading, setIsReassignLoading] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
-  const [hasMounted, setHasMounted] = useState(false);
-  
-  const { cache, setTasksCache, isTasksCached } = useDataCache();
 
-  // Load from cache on mount if available
-  useEffect(() => {
-    if (isTasksCached() && cache.tasks) {
-      setTasks(cache.tasks);
-    }
-    setHasMounted(true);
-  }, []);
-
-  // Sync tasks to cache whenever they change (after initial load)
-  useEffect(() => {
-    if (hasMounted && Object.keys(tasks).length > 0) {
-      setTasksCache(tasks);
-    }
-  }, [tasks, hasMounted, setTasksCache]);
-
-  const refreshTasks = useCallback(async (forceRefresh: boolean = false) => {
+  const refreshTasks = useCallback(async () => {
     if (!mongoUserId) {
       setTasks({});
-      return;
-    }
-    
-    // Use cached data if available and not forcing refresh
-    if (!forceRefresh && isTasksCached() && cache.tasks) {
-      console.log('useTasksData: Using cached tasks');
-      setTasks(cache.tasks);
       return;
     }
 
@@ -124,12 +98,10 @@ const useTasksData = (mongoUserId: string): UseTasksDataResult => {
         }, {} as TaskDictionary);
 
       setTasks(formatted);
-      setTasksCache(formatted); // Update cache
-      console.log('useTasksData: Fetched and cached tasks');
     } catch (error) {
       console.error('Error fetching tasks:', error);
     }
-  }, [mongoUserId, isTasksCached, cache.tasks, setTasksCache]);
+  }, [mongoUserId]);
 
   const addTask = useCallback(async (values: CreatableTaskValues) => {
     if (!mongoUserId) {

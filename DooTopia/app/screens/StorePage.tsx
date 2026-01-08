@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { auth } from "../../FirebaseConfig";
 import { StoreCard } from "../components/StoreCard";
-import { useDataCache } from "../context/DataCacheContext";
 
 type StorePrize = {
   _id: string;
@@ -24,8 +23,6 @@ export default function StorePage() {
   const [prizes, setPrizes] = useState<StorePrize[]>([]);
   const [inventory, setInventory] = useState<string[]>([]);
   const router = useRouter();
-  
-  const { cache, setPrizesCache, isPrizesCached, setUserProfileCache } = useDataCache();
 
   useEffect(() => {
     const loadUserPointsAndPrizes = async () => {
@@ -36,20 +33,9 @@ export default function StorePage() {
           setMongoUserId(mongoUser._id);
           setUserPoints(mongoUser.points ?? 0);
           setInventory(Array.isArray(mongoUser.inventory) ? mongoUser.inventory : []);
-          // Update user profile cache
-          setUserProfileCache(mongoUser);
         }
-        
-        // Use cached prizes if available
-        if (isPrizesCached() && cache.prizes) {
-          console.log('StorePage: Using cached prizes');
-          setPrizes(cache.prizes);
-        } else {
-          const fetchedPrizes = await getPrizes();
-          const prizesArray = Array.isArray(fetchedPrizes) ? fetchedPrizes : [];
-          setPrizes(prizesArray);
-          setPrizesCache(prizesArray);
-        }
+        const fetchedPrizes = await getPrizes();
+        setPrizes(Array.isArray(fetchedPrizes) ? fetchedPrizes : []);
       } catch (e) {
         console.error("Failed loading user points or prizes", e);
       } finally {
