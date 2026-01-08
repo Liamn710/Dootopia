@@ -343,8 +343,9 @@ export async function deleteSubtask(id) {
 
 // prize API***************************************************************************
 
-export async function getPrizes() {
-    const response = await axios.get(`${API_URL}/prizes`);
+export async function getPrizes(userId) {
+    const url = userId ? `${API_URL}/prizes?userId=${userId}` : `${API_URL}/prizes`;
+    const response = await axios.get(url);
     if (response.status === 200) {
         return response.data;
     }

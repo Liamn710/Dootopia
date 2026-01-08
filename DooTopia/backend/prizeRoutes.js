@@ -6,7 +6,9 @@ let prizeRoutes = express.Router();
 
 prizeRoutes.route("/prizes").get(async (request, response) => {
     let db = database.getdb();
-    let data = await db.collection("prizes").find({}).toArray();
+    const userId = request.query.userId;
+    const query = userId ? { userId } : {};
+    let data = await db.collection("prizes").find(query).toArray();
     if (data.length > 0) {
         response.status(200).json(data);
     } else {
@@ -27,14 +29,17 @@ prizeRoutes.route("/prizes/:id").get(async (request, response) => {
 prizeRoutes.route("/prizes").post(async (request, response) => {
     let db = database.getdb();
     let newprize = {
+        userId: request.body.userId,
         title: request.body.title,
         subtitle: request.body.subtitle,
         content: request.body.content, 
-        price: request.body.price,
-        imageUrl: request.body.imageUrl
+        pointsRequired: request.body.pointsRequired || 0,
+        imageUrl: request.body.imageUrl,
+        isCompleted: false,
+        createdAt: new Date()
     };
     let result = await db.collection("prizes").insertOne(newprize);
-    response.status(201).json(result.ops[0]);
+    response.status(201).json(result);
 });
 
 prizeRoutes.route("/prizes/:id").put(async (request, response) => {
@@ -43,10 +48,11 @@ prizeRoutes.route("/prizes/:id").put(async (request, response) => {
         title: request.body.title,
         subtitle: request.body.subtitle,
         content: request.body.content, 
-        price: request.body.price,
-        imageUrl: request.body.imageUrl
+        pointsRequired: request.body.pointsRequired,
+        imageUrl: request.body.imageUrl,
+        isCompleted: request.body.isCompleted
     };
-    let result = await db.collection("prizes").updateOne({ _id: ObjectId(request.params.id) }, { $set: updatedprize });
+    let result = await db.collection("prizes").updateOne({ _id: new ObjectId(request.params.id) }, { $set: updatedprize });
     if (result.modifiedCount > 0) {
         response.status(200).json({ message: "prize updated successfully" });
     } else {

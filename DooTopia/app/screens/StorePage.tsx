@@ -138,8 +138,4 @@ export default function StorePage() {
   );
 }
 
-//TODO :: Make the StoreCard responsive to different screen sizes
-// TODO :: connect to backend to get real user points and items
-
-
-
+//TODO :: Fix the instant mail issue that shows for a split second when changing to the profile page
