@@ -1,33 +1,40 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { deleteUser as firebaseDeleteUser, sendPasswordResetEmail, signOut } from 'firebase/auth';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Avatar, Button, Text } from 'react-native-paper';
 import { deleteUser as deleteUserApi, getMongoUserByFirebaseId } from '../../backend/api';
 import { auth } from '../../FirebaseConfig';
-import useMongoUserProfile from '../hooks/useMongoUserProfile';
 
 const ProfilePage = () => {
   const router = useRouter();
-  const { profile, loading: profileLoading, refresh } = useMongoUserProfile(10 * 60 * 1000);
-  const [stableName, setStableName] = useState<string | null>(profile?.name ?? null);
-  const [stableAvatarUri, setStableAvatarUri] = useState<string | null>(profile?.selectedAvatarUrl ?? null);
+  const [mongoProfile, setMongoProfile] = useState<any | null>(null);
+  const [profileLoading, setProfileLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    if (profile?.name) {
-      setStableName(profile.name);
+  const loadProfile = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      setMongoProfile(null);
+      setProfileLoading(false);
+      return;
     }
-    if (profile?.selectedAvatarUrl) {
-      setStableAvatarUri(profile.selectedAvatarUrl);
+
+    try {
+      setProfileLoading(true);
+      const mongoUser = await getMongoUserByFirebaseId(user.uid);
+      setMongoProfile(mongoUser);
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      Alert.alert('Error', 'Unable to load profile information.');
+    } finally {
+      setProfileLoading(false);
     }
-  }, [profile]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      refresh(true).catch(() => {
-        // Error handled inside hook; avoid showing stale fallback.
-      });
-    }, [refresh])
+      loadProfile();
+    }, [loadProfile])
   );
 
 
@@ -50,7 +57,7 @@ const ProfilePage = () => {
       // Delete from Firebase Auth
       await firebaseDeleteUser(user);
 
-      let mongoUserId = profile?._id;
+      let mongoUserId = mongoProfile?._id;
       if (!mongoUserId) {
         const mongoUser = await getMongoUserByFirebaseId(user.uid);
         mongoUserId = mongoUser?._id;
@@ -87,53 +94,26 @@ const ProfilePage = () => {
     router.push("/screens/OwnedAvatarsPage");
   };
 
-  const defaultAvatarUri = 'https://gravatar.com/avatar/0afa0df4b91f1d47fe6e607745d35b36?s=400&d=robohash&r=x';
-  const avatarUri = useMemo(() => {
-    if (stableAvatarUri) {
-      return stableAvatarUri;
-    }
-    if (profile?.selectedAvatarUrl) {
-      return profile.selectedAvatarUrl;
-    }
-    if (profileLoading) {
-      return null; // Avoid flashing an outdated primary avatar while loading.
-    }
-    return auth.currentUser?.photoURL || defaultAvatarUri;
-  }, [stableAvatarUri, profile, profileLoading]);
+  const avatarUri = mongoProfile?.selectedAvatarUrl
+    || 'https://gravatar.com/avatar/0afa0df4b91f1d47fe6e607745d35b36?s=400&d=robohash&r=x';
 
-  const profileName = useMemo(() => {
-    if (stableName) {
-      return stableName;
-    }
-    if (profile?.name) {
-      return profile.name;
-    }
-    if (profileLoading) {
-      return 'Profile';
-    }
-    return auth.currentUser?.displayName || auth.currentUser?.email || 'Profile';
-  }, [profile, stableName, profileLoading]);
+  const profileName = mongoProfile?.name
+    || auth.currentUser?.displayName
+    || auth.currentUser?.email
+    || 'Profile';
 
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={onAvatarPress}>
-        {avatarUri ? (
-          <Avatar.Image
-            size={110}
-            source={{ uri: avatarUri }}
-            style={styles.avatar}
-          />
-        ) : (
-          <Avatar.Icon
-            size={110}
-            icon="account"
-            style={styles.avatar}
-          />
-        )}
+        <Avatar.Image
+          size={110}
+          source={{ uri: avatarUri }}
+          style={styles.avatar}
+        />
       </TouchableOpacity>
       <Text variant="headlineMedium" style={styles.primaryText}>{profileName}</Text>
-      <Text style={styles.secondaryText}>{profile?.email || (!profileLoading ? auth.currentUser?.email : '')}</Text>
-      <Text style={styles.pointsText}>Points: {profile?.points ?? 0}</Text>
+      <Text style={styles.secondaryText}>{mongoProfile?.email || auth.currentUser?.email || ''}</Text>
+      <Text style={styles.pointsText}>Points: {mongoProfile?.points ?? 0}</Text>
       {profileLoading && <Text style={styles.loadingText}>Refreshing profile...</Text>}
       <Button mode="contained" onPress={handleSignOut} style={{ marginTop: 20 }}>
         Logout

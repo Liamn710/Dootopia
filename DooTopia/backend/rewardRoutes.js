@@ -8,8 +8,8 @@ rewardRoutes.route("/rewards").get(async (request, response) => {
     let db = database.getdb();
     const { userId } = request.query;
     
-    // Build filter object - if userId is provided, filter by userId
-    const filter = userId ? { userId } : {};
+    // Build filter object - if userId is provided, filter by owner
+    const filter = userId ? { owner: userId } : {};
     
     let data = await db.collection("rewards").find(filter).toArray();
     if (data.length > 0) {
