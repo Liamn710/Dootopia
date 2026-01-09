@@ -34,8 +34,12 @@ export default function StorePage() {
           setUserPoints(mongoUser.points ?? 0);
           setInventory(Array.isArray(mongoUser.inventory) ? mongoUser.inventory : []);
         }
+        // Fetch all prizes and filter to show only store items (avatars without userId)
         const fetchedPrizes = await getPrizes();
-        setPrizes(Array.isArray(fetchedPrizes) ? fetchedPrizes : []);
+        const storeItems = Array.isArray(fetchedPrizes) 
+          ? fetchedPrizes.filter((prize: any) => !prize.userId) 
+          : [];
+        setPrizes(storeItems);
       } catch (e) {
         console.error("Failed loading user points or prizes", e);
       } finally {

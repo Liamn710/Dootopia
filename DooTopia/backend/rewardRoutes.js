@@ -6,7 +6,12 @@ let rewardRoutes = express.Router();
 
 rewardRoutes.route("/rewards").get(async (request, response) => {
     let db = database.getdb();
-    let data = await db.collection("rewards").find({}).toArray();
+    const { userId } = request.query;
+    
+    // Build filter object - if userId is provided, filter by userId
+    const filter = userId ? { userId } : {};
+    
+    let data = await db.collection("rewards").find(filter).toArray();
     if (data.length > 0) {
         response.status(200).json(data);
     } else {
@@ -30,7 +35,7 @@ rewardRoutes.route("/rewards").post(async (request, response) => {
         title: request.body.title,
         points: request.body.points,
         description: request.body.description,
-        owner: request.body.owner
+        userId: request.body.userId
     };
     let result = await db.collection("rewards").insertOne(newReward);
     response.status(201).json(result.ops[0]);
