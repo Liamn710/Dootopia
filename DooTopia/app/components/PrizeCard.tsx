@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Avatar, Button, Card, Text, Chip } from 'react-native-paper';
 import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
+//include ant design icons
+import { AntDesign } from '@expo/vector-icons';
 
 
 
@@ -19,7 +21,7 @@ interface PrizeCardProps {
   onCardPress?: () => void;
 }
 
-const LeftContent = (props: any) => <Avatar.Icon {...props} icon="medal" />
+const LeftContent = (props: any) => <Avatar.Icon {...props} icon={() => <AntDesign name="gift" size={20} color="white" />} />;
 
 export const PrizeCard: React.FC<PrizeCardProps> = ({
   title,
@@ -43,7 +45,7 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
         <Text variant="bodyMedium">{content}</Text>
         <View style={styles.pointsChipContainer}>
           <Chip 
-            icon="star" 
+            icon={() => <AntDesign name="star" size={20} color="white" />}
             style={[
               styles.pointsChip,
               !hasEnoughPoints && !isCompleted && styles.insufficientPoints
@@ -57,7 +59,7 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
             </Text>
           )}
           {isCompleted && (
-            <Chip icon="check" style={styles.completedChip}>
+            <Chip icon={() => <AntDesign name="check" size={20} color="white" />} style={styles.completedChip}>
               Completed
             </Chip>
           )}

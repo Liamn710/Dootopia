@@ -1,12 +1,14 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Button, Dialog, IconButton, PaperProvider, Portal, Text, TextInput } from 'react-native-paper';
 import { createReward, getRewardById, updateReward, updateUser } from '../../backend/api';
 import FavButton from '../components/FavButton';
 import { PrizeCard } from '../components/PrizeCard';
 import useMongoUserProfile from '../hooks/useMongoUserProfile';
 import { uploadImageToCloudinary } from '../utils/cloudinary';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 export interface Prize {
   _id?: string;
@@ -25,6 +27,8 @@ const PrizesPage = () => {
   const [uploading, setUploading] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const { profile, refresh } = useMongoUserProfile();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const [newPrize, setNewPrize] = React.useState<Prize>({
     userId: '',
     title: '',  
@@ -195,7 +199,9 @@ const PrizesPage = () => {
             <Text>Loading rewards...</Text>
           </View>
         ) : (
-          <ScrollView>
+          //make the cards 30 precent of the screen width if in pc and full width if in mobile
+
+          <ScrollView >
             {prizes.map(prize => (
               <PrizeCard
                 key={prize._id || prize.id}
@@ -244,7 +250,7 @@ const PrizesPage = () => {
                   mode="outlined" 
                   onPress={pickImage}
                   disabled={uploading}
-                  icon="image"
+                  icon={() => <FontAwesome5 name="image" size={24} color="black" />}
                   style={styles.imageButton}
                 >
                   {uploading ? 'Uploading...' : 'Upload Image'}
@@ -261,7 +267,7 @@ const PrizesPage = () => {
                   <View style={styles.imagePreview}>
                     <Text style={styles.imagePreviewText}>✓ Image uploaded</Text>
                     <IconButton
-                      icon="close"
+                      icon={() => <AntDesign name="closecircle" color="#ff1744" />}
                       size={16}
                       onPress={() => setNewPrize(prev => ({ ...prev, imageUrl: undefined }))}
                     />
@@ -339,6 +345,6 @@ const styles = StyleSheet.create({
 
 export default PrizesPage;
 
-//TODO :: connect to a cloud service for saving prizes and loading them
 //TODO :: add ability to edit and delete prizes
 //TODO :: improve UI/UX of the prizes page
+//

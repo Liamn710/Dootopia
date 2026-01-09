@@ -143,7 +143,7 @@ export async function getRewards(userId) {
 }
 
 export async function getRewardById(id) {
-    const response = await axios.get(`${API_URL}/rewards/${id}`);
+    const response = await axios.get(`${API_URL}/rewards?userId=${id}`);
     if (response.status === 200) {
         return response.data;
     }

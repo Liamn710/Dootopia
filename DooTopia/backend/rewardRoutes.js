@@ -35,10 +35,12 @@ rewardRoutes.route("/rewards").post(async (request, response) => {
         title: request.body.title,
         points: request.body.points,
         description: request.body.description,
-        userId: request.body.userId
+        userId: request.body.userId,
+        imageUrl: request.body.imageUrl,
+        owner: request.body.userId
     };
     let result = await db.collection("rewards").insertOne(newReward);
-    response.status(201).json(result.ops[0]);
+    response.status(201).json({ ...newReward, _id: result.insertedId });
 });
 
 rewardRoutes.route("/rewards/:id").put(async (request, response) => {

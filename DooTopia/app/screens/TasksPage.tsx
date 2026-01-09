@@ -395,7 +395,6 @@ const TasksPage = () => {
         mode="create"
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        assigneeOptions={assigneeOptions}
         onSubmit={handleAddTask}
         isSaving={isCreatingTask}
       />

@@ -6,6 +6,8 @@
 import React from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Avatar, Button, Card, Text } from 'react-native-paper';
+import { MaterialIcons } from '@expo/vector-icons';
+
 
 interface StoreCardProps {
   title: string;
@@ -20,8 +22,8 @@ interface StoreCardProps {
   coverHeight?: number;                 
   cardStyle?: any;                      // allow external override
 }
-
-const LeftContent = (props: any) => <Avatar.Icon {...props} icon="store" />
+// try using ant design icons or material icons for the store icon
+const LeftContent = (props: any) => <Avatar.Icon {...props} icon={() => <MaterialIcons name="store" size={20} color="white" />} />
 
 export const StoreCard = ({
   title,
@@ -65,7 +67,7 @@ export const StoreCard = ({
           mode={canAfford ? "contained" : "outlined"}
           disabled={!canAfford}
           onPress={onPurchase}
-          icon="shopping"
+          icon={() => <MaterialIcons name="shopping-cart" size={24} color="white" />}
         >
           {canAfford ? "Purchase" : "Not enough points"}
         </Button>

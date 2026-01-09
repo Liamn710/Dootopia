@@ -6,6 +6,7 @@ import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { auth } from "../../FirebaseConfig";
 import { StoreCard } from "../components/StoreCard";
 
+
 type StorePrize = {
   _id: string;
   title: string;
