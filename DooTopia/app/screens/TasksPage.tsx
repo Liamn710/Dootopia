@@ -171,8 +171,20 @@ const TasksPage = () => {
   const getTasksInList = useCallback((listId: string) => {
     const list = lists.find(l => l._id === listId);
     if (!list) return [];
-    return tasksArray.filter(task => list.taskIds?.includes(task.id));
-  }, [lists, tasksArray]);
+    // Apply the same filters as the main task list
+    return tasksArray
+      .filter(task => list.taskIds?.includes(task.id))
+      .filter(task => matchesAssignee(task) && matchesTags(task));
+  }, [lists, tasksArray, matchesAssignee, matchesTags]);
+
+  // Filter lists to only show those with matching tasks
+  const filteredLists = useMemo(() => {
+    return lists.filter(list => {
+      const listTasks = tasksArray.filter(task => list.taskIds?.includes(task.id));
+      // Check if any task in the list matches the current filters
+      return listTasks.some(task => matchesAssignee(task) && matchesTags(task));
+    });
+  }, [lists, tasksArray, matchesAssignee, matchesTags]);
 
   // Handlers
   const handleDueDateUpdate = useCallback(async (taskId: string, dueDate: string) => {
@@ -311,15 +323,15 @@ const TasksPage = () => {
             onPress={() => setShowLists(prev => !prev)}
             activeOpacity={0.7}
           >
-            <Text style={styles.listsSectionTitle}>My Lists ({lists.length})</Text>
+            <Text style={styles.listsSectionTitle}>My Lists ({filteredLists.length})</Text>
             <AntDesign name={showLists ? 'up' : 'down'} size={16} color="#5A8A93" />
           </TouchableOpacity>
           {showLists && (
             <View style={styles.listsList}>
-              {lists.length === 0 ? (
-                <Text style={styles.emptyListText}>No lists yet. Create one below!</Text>
+              {filteredLists.length === 0 ? (
+                <Text style={styles.emptyListText}>No lists match the current filters.</Text>
               ) : (
-                lists.map(list => {
+                filteredLists.map(list => {
                   const isExpanded = expandedListId === list._id;
                   const listTasks = getTasksInList(list._id);
                   const incompleteListTasks = listTasks.filter((t: Task) => !t.completed);
