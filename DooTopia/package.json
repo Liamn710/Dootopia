@@ -24,7 +24,7 @@
     "@react-navigation/stack": "^7.4.2",
     "@types/lodash": "^4.17.20",
     "axios": "^1.6.8",
-    "cloudinary": "^2.8.0",
+    "cloudinary": "^2.9.0",
     "cors": "^2.8.5",
     "datetimepicker": "^0.1.39",
     "dotenv": "^17.2.1",

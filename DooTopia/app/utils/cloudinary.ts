@@ -80,3 +80,59 @@ export async function uploadImageToCloudinary(imageUri: string): Promise<string>
     throw error;
   }
 }
+
+/**
+ * Extracts the public_id from a Cloudinary URL
+ * Example: https://res.cloudinary.com/dppzfeczt/image/upload/v1234567890/prize_1234567890.jpg
+ * Returns: prize_1234567890
+ */
+export function extractPublicIdFromUrl(imageUrl: string): string | null {
+  try {
+    // Match the pattern: /upload/v<version>/<public_id>.<extension>
+    const matches = imageUrl.match(/\/upload\/(?:v\d+\/)?([^/.]+)/);
+    return matches ? matches[1] : null;
+  } catch (error) {
+    console.error('Error extracting public_id:', error);
+    return null;
+  }
+}
+
+/**
+ * Deletes an image from Cloudinary using the public_id
+ * Note: This requires a server-side implementation for security
+ * For now, we'll just return success since Cloudinary doesn't allow
+ * client-side deletion without exposing API secrets
+ */
+export async function deleteImageFromCloudinary(imageUrl: string): Promise<boolean> {
+  try {
+    const publicId = extractPublicIdFromUrl(imageUrl);
+    if (!publicId) {
+      console.warn('Could not extract public_id from URL:', imageUrl);
+      return false;
+    }
+
+    console.log('Deleting image with public_id:', publicId);
+    
+    const API_URL = 'http://localhost:3000';
+    const response = await fetch(`${API_URL}/cloudinary/delete`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ publicId }),
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      console.log('Image deleted successfully from Cloudinary:', data);
+      return true;
+    } else {
+      console.error('Failed to delete image:', data);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error deleting image from Cloudinary:', error);
+    return false;
+  }
+}

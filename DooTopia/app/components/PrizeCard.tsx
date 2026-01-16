@@ -55,7 +55,7 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
           </Chip>
           {!hasEnoughPoints && !isCompleted && (
             <Text style={styles.warningText}>
-              Need {pointsRequired - userPoints} more points
+              Need {pointsRequired - userPoints} 
             </Text>
           )}
           {isCompleted && (
@@ -66,17 +66,22 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
         </View>
       </Card.Content>
       <Card.Cover source={{ uri: imageUrl }} />
-      <Card.Actions>
+      <Card.Actions style={styles.cardActions}>
         <Button 
           onPress={onCancel}
-          disabled={!isCompleted}
+          disabled={isCompleted}
+          mode="outlined"
+          textColor="#d32f2f"
+          buttonColor="#fff"
+          style={styles.deleteButton}
         >
-          Fail
+          Delete
         </Button>
         <Button 
           onPress={onCompleted}
           disabled={!hasEnoughPoints || isCompleted}
           mode={hasEnoughPoints && !isCompleted ? 'contained' : 'text'}
+          style={styles.completeButton}
         >
           {isCompleted ? 'Completed' : 'Complete'}
         </Button>
@@ -117,5 +122,17 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
     color: '#ff6b6b',
     fontSize: 12,
     fontStyle: 'italic',
+  },
+  cardActions: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  deleteButton: {
+    borderColor: '#d32f2f',
+    borderWidth: 1,
+  },
+  completeButton: {
+    minWidth: 100,
   },
 });

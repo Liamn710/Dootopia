@@ -1,12 +1,12 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { Button, Dialog, IconButton, PaperProvider, Portal, Text, TextInput } from 'react-native-paper';
-import { createReward, getRewardById, updateReward, updateUser } from '../../backend/api';
+import { createReward, getRewardById, updateReward, updateUser ,deleteReward } from '../../backend/api';
 import FavButton from '../components/FavButton';
 import { PrizeCard } from '../components/PrizeCard';
 import useMongoUserProfile from '../hooks/useMongoUserProfile';
-import { uploadImageToCloudinary } from '../utils/cloudinary';
+import { uploadImageToCloudinary  ,deleteImageFromCloudinary} from '../utils/cloudinary';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import AntDesign from '@expo/vector-icons/AntDesign';
 
@@ -18,6 +18,7 @@ export interface Prize {
   description: string;
   points: number;
   imageUrl?: string;
+  completed?: boolean;
   createdAt?: Date;
 }
 
@@ -26,6 +27,7 @@ const PrizesPage = () => {
   const [prizes, setPrizes] = React.useState<Prize[]>([]);
   const [uploading, setUploading] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
+  const [showCompleted, setShowCompleted] = React.useState(false);
   const { profile, refresh } = useMongoUserProfile();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
@@ -148,6 +150,14 @@ const PrizesPage = () => {
       // Claim the reward and deduct points
       const rewardId = prize._id || prize.id;
       
+      if (!rewardId) {
+        Alert.alert('Error', 'Invalid reward ID');
+        return;
+      }
+
+      // Mark reward as completed
+      await updateReward(rewardId, { completed: true });
+      
       // Deduct points from user
       const newPoints = userPoints - prize.points;
       await updateUser(profile._id, { 
@@ -169,15 +179,56 @@ const PrizesPage = () => {
   };
 
   const handleCancel = async (prize: Prize) => {
-    try {
-      const rewardId = prize._id || prize.id;
-      await updateReward(rewardId, prize);
-      await loadPrizes();
-      Alert.alert('Reward Updated', 'Reward has been updated');
-    } catch (error) {
-      console.error('Error updating reward:', error);
-      Alert.alert('Error', 'Failed to update reward');
+    if (!profile?._id) {
+      Alert.alert('Error', 'User profile not loaded');
+      return;
     }
+
+    // Confirm deletion
+    Alert.alert(
+      'Delete Reward',
+      'Are you sure you want to delete this reward? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const rewardId = prize._id || prize.id;
+              
+              if (!rewardId) {
+                Alert.alert('Error', 'Invalid reward ID');
+                return;
+              }
+
+              setLoading(true);
+
+              // Delete image from Cloudinary if it exists
+              if (prize.imageUrl) {
+                await deleteImageFromCloudinary(prize.imageUrl);
+              }
+
+              // Delete reward from database
+              await deleteReward(rewardId);
+
+              // Reload rewards
+              await loadPrizes();
+
+              Alert.alert('Success', 'Reward deleted successfully');
+            } catch (error) {
+              console.error('Error deleting reward:', error);
+              Alert.alert('Error', 'Failed to delete reward. Please try again.');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleCardPress = () => {
@@ -199,10 +250,9 @@ const PrizesPage = () => {
             <Text>Loading rewards...</Text>
           </View>
         ) : (
-          //make the cards 30 precent of the screen width if in pc and full width if in mobile
-
-          <ScrollView >
-            {prizes.map(prize => (
+          <ScrollView>
+            {/* Active Rewards */}
+            {prizes.filter(p => !p.completed).map(prize => (
               <PrizeCard
                 key={prize._id || prize.id}
                 title={prize.title}
@@ -217,6 +267,37 @@ const PrizesPage = () => {
                 onCardPress={handleCardPress}
               />
             ))}
+
+            {/* Completed Section */}
+            {prizes.filter(p => p.completed).length > 0 && (
+              <View style={styles.completedSection}>
+                <TouchableOpacity
+                  style={styles.completedHeader}
+                  onPress={() => setShowCompleted(prev => !prev)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.completedTitle}>
+                    Completed ({prizes.filter(p => p.completed).length})
+                  </Text>
+                  <AntDesign name={showCompleted ? 'up' : 'down'} size={16} color="#6200ee" />
+                </TouchableOpacity>
+                {showCompleted && prizes.filter(p => p.completed).map(prize => (
+                  <PrizeCard
+                    key={prize._id || prize.id}
+                    title={prize.title}
+                    subtitle={prize.description}
+                    content={prize.description}
+                    imageUrl={prize.imageUrl}
+                    pointsRequired={prize.points}
+                    isCompleted={true}
+                    userPoints={profile?.points || 0}
+                    onCancel={() => handleCancel(prize)}
+                    onCompleted={() => handleCompleted(prize)}
+                    onCardPress={handleCardPress}
+                  />
+                ))}
+              </View>
+            )}
           </ScrollView>
         )}
         
@@ -340,6 +421,24 @@ const styles = StyleSheet.create({
   imagePreviewText: {
     color: '#2e7d32',
     fontWeight: '500',
+  },
+  completedSection: {
+    marginTop: 24,
+  },
+  completedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  completedTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6200ee',
   },
 });
 
