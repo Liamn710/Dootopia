@@ -98,15 +98,35 @@ const TasksPage = () => {
   );
 
   const assigneeOptions: AssigneeOption[] = useMemo(() => {
-    const options = Object.entries(usersMap).map(([id, name]) => ({
-      id,
-      label: id === mongoUserId ? 'You' : (name || 'Unknown'),
-    }));
-    if (mongoUserId && !options.some(option => option.id === mongoUserId)) {
-      options.unshift({ id: mongoUserId, label: 'You' });
+    // Get unique assignee IDs from tasks that the current user created
+    const relevantAssigneeIds = new Set<string>();
+    tasksArray.forEach(task => {
+      if (task.userId === mongoUserId && task.assignedToId) {
+        relevantAssigneeIds.add(task.assignedToId);
+      }
+    });
+    
+    // Always include the current user
+    if (mongoUserId) {
+      relevantAssigneeIds.add(mongoUserId);
     }
-    return options;
-  }, [usersMap, mongoUserId]);
+    
+    // Build options only for relevant users
+    const options: AssigneeOption[] = [];
+    relevantAssigneeIds.forEach(id => {
+      options.push({
+        id,
+        label: id === mongoUserId ? 'You' : (usersMap[id] || 'Unknown'),
+      });
+    });
+    
+    // Sort so 'You' appears first
+    return options.sort((a, b) => {
+      if (a.id === mongoUserId) return -1;
+      if (b.id === mongoUserId) return 1;
+      return a.label.localeCompare(b.label);
+    });
+  }, [usersMap, mongoUserId, tasksArray]);
 
   // Filter functions
   const matchesAssignee = useCallback((task: Task) => {

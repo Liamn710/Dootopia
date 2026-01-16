@@ -1,16 +1,16 @@
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import {
-    createSubtask,
-    createTask,
-    deleteSubtask as deleteSubtaskApi,
-    deleteTask as deleteTaskApi,
-    getMongoUserByEmail,
-    getSubtasks,
-    getTasks,
-    updateSubtask,
-    updateTask,
-    updateUser,
+  createSubtask,
+  createTask,
+  deleteSubtask as deleteSubtaskApi,
+  deleteTask as deleteTaskApi,
+  getMongoUserByEmail,
+  getSubtasks,
+  getTasks,
+  updateSubtask,
+  updateTask,
+  updateUser,
 } from '../../backend/api';
 import type { CreatableTaskValues, EditableTaskValues } from '../components/TaskModal';
 import type { Subtask } from '../types/Subtask';
@@ -91,6 +91,7 @@ const useTasksData = (mongoUserId: string): UseTasksDataResult => {
             subtasks: taskSubtasks,
             expanded: false,
             assignedToId: task.assignedToId,
+            userId: task.userId,
             dueDate: task.dueDate,
             tags: normalizeTags(task.tags ?? []),
           };
