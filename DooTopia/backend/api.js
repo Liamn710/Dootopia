@@ -182,6 +182,39 @@ export async function deleteReward(id) {
     }
 }
 
+// Get rewards shared with a specific user
+export async function getSharedRewards(userId) {
+    const response = await axios.get(`${API_URL}/rewards/shared/${userId}`);
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "No shared rewards found" };
+    }
+}
+
+// Share a reward with specific users
+export async function shareReward(rewardId, userIds) {
+    const response = await axios.post(`${API_URL}/rewards/${rewardId}/share`, { userIds });
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "Reward sharing failed" };
+    }
+}
+
+// Remove users from a shared reward
+export async function unshareReward(rewardId, userIds) {
+    const response = await axios.post(`${API_URL}/rewards/${rewardId}/unshare`, { userIds });
+    if (response.status === 200) {
+        return response.data;
+    }
+    else {
+        return { error: "Unsharing reward failed" };
+    }
+}
+
 // list API***************************************************************************
 
 export async function getLists() {

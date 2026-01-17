@@ -63,3 +63,8 @@ app-example
 
 # Reference pages (development only)
 app/screens/reference/
+
+# VS Code
+.vscode/
+.history/
+.idea/

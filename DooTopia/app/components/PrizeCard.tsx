@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Avatar, Button, Card, Text, Chip } from 'react-native-paper';
-import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
+import { Avatar, Button, Card, Chip, Text } from 'react-native-paper';
 //include ant design icons
 import { AntDesign } from '@expo/vector-icons';
 
@@ -19,6 +18,9 @@ interface PrizeCardProps {
   onCancel: () => void;
   onCompleted: () => void;
   onCardPress?: () => void;
+  onShare?: () => void; // New prop for share functionality
+  isOwner?: boolean; // Whether current user is the owner
+  isShared?: boolean; // Whether this reward was shared with current user
 }
 
 const LeftContent = (props: any) => <Avatar.Icon {...props} icon={() => <AntDesign name="gift" size={20} color="white" />} />;
@@ -33,13 +35,44 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
   userPoints,
   onCancel,
   onCompleted,
-  onCardPress
+  onCardPress,
+  onShare,
+  isOwner = true,
+  isShared = false
 }) => {
   const hasEnoughPoints = userPoints >= pointsRequired;
 
   return (
     <Card onPress={onCardPress} style={[styles.card, isCompleted ? styles.completedCard : undefined]}>
-      <Card.Title title={title} subtitle={subtitle} left={LeftContent} />
+      <Card.Title 
+        title={title} 
+        subtitle={subtitle} 
+        left={LeftContent}
+        right={(props) => (
+          <>
+            {isShared && (
+              <Chip 
+                icon={() => <AntDesign name="sharealt" size={16} color="#6200ee" />}
+                style={styles.sharedBadge}
+                textStyle={styles.sharedBadgeText}
+              >
+                Shared
+              </Chip>
+            )}
+            {isOwner && onShare && !isCompleted && (
+              <Button 
+                {...props}
+                onPress={onShare}
+                mode="text"
+                icon={() => <AntDesign name="sharealt" size={18} color="#6200ee" />}
+                compact
+              >
+                Share
+              </Button>
+            )}
+          </>
+        )}
+      />
       <Card.Content>
         <Text variant="titleLarge">{title}</Text>
         <Text variant="bodyMedium">{content}</Text>
@@ -75,7 +108,7 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
           buttonColor="#fff"
           style={styles.deleteButton}
         >
-          Delete
+          {isOwner ? 'Delete' : 'Remove'}
         </Button>
         <Button 
           onPress={onCompleted}
@@ -83,7 +116,7 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
           mode={hasEnoughPoints && !isCompleted ? 'contained' : 'text'}
           style={styles.completeButton}
         >
-          {isCompleted ? 'Completed' : 'Complete'}
+          {isCompleted ? 'Completed' : isShared ? 'Claim' : 'Complete'}
         </Button>
       </Card.Actions>
     </Card>
@@ -134,5 +167,13 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
   },
   completeButton: {
     minWidth: 100,
+  },
+  sharedBadge: {
+    backgroundColor: '#e3f2fd',
+    marginRight: 8,
+  },
+  sharedBadgeText: {
+    color: '#6200ee',
+    fontSize: 12,
   },
 });

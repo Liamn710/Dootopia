@@ -1,14 +1,15 @@
+import AntDesign from '@expo/vector-icons/AntDesign';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as ImagePicker from 'expo-image-picker';
 import * as React from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
-import { Button, Dialog, IconButton, PaperProvider, Portal, Text, TextInput } from 'react-native-paper';
-import { createReward, getRewardById, updateReward, updateUser ,deleteReward } from '../../backend/api';
+import { Button, Dialog, IconButton, PaperProvider, Portal, SegmentedButtons, Text, TextInput } from 'react-native-paper';
+import { createReward, deleteReward, getRewardById, getSharedRewards, shareReward, updateReward, updateUser } from '../../backend/api';
 import FavButton from '../components/FavButton';
 import { PrizeCard } from '../components/PrizeCard';
+import ShareRewardModal from '../components/ShareRewardModal';
 import useMongoUserProfile from '../hooks/useMongoUserProfile';
-import { uploadImageToCloudinary  ,deleteImageFromCloudinary} from '../utils/cloudinary';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import AntDesign from '@expo/vector-icons/AntDesign';
+import { deleteImageFromCloudinary, uploadImageToCloudinary } from '../utils/cloudinary';
 
 export interface Prize {
   _id?: string;
@@ -20,14 +21,20 @@ export interface Prize {
   imageUrl?: string;
   completed?: boolean;
   createdAt?: Date;
+  sharedWith?: string[]; // Array of user IDs this reward is shared with
+  owner?: string; // Original creator of the reward
 }
 
 const PrizesPage = () => {
   const [visible, setVisible] = React.useState(false);
   const [prizes, setPrizes] = React.useState<Prize[]>([]);
+  const [sharedRewards, setSharedRewards] = React.useState<Prize[]>([]);
   const [uploading, setUploading] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [showCompleted, setShowCompleted] = React.useState(false);
+  const [viewMode, setViewMode] = React.useState<'my' | 'shared'>('my');
+  const [shareModalVisible, setShareModalVisible] = React.useState(false);
+  const [selectedPrizeToShare, setSelectedPrizeToShare] = React.useState<Prize | null>(null);
   const { profile, refresh } = useMongoUserProfile();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
@@ -41,6 +48,7 @@ const PrizesPage = () => {
   // Load prizes from MongoDB when component mounts
   React.useEffect(() => {
     loadPrizes();
+    loadSharedRewards();
   }, [profile]);
 
   const loadPrizes = async () => {
@@ -57,6 +65,19 @@ const PrizesPage = () => {
       Alert.alert('Error', 'Failed to load rewards');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSharedRewards = async () => {
+    if (!profile?._id) return;
+    
+    try {
+      const fetchedSharedRewards = await getSharedRewards(profile._id);
+      if (Array.isArray(fetchedSharedRewards)) {
+        setSharedRewards(fetchedSharedRewards);
+      }
+    } catch (error) {
+      console.error('Error loading shared rewards:', error);
     }
   };
 
@@ -235,6 +256,27 @@ const PrizesPage = () => {
     console.log('Card pressed');
   };
 
+  const handleShareReward = (prize: Prize) => {
+    setSelectedPrizeToShare(prize);
+    setShareModalVisible(true);
+  };
+
+  const handleShareSubmit = async (selectedUserIds: string[]) => {
+    if (!selectedPrizeToShare?._id || !profile?._id) return;
+    
+    try {
+      await shareReward(selectedPrizeToShare._id, selectedUserIds);
+      Alert.alert('Success', `Reward shared with ${selectedUserIds.length} user(s)!`);
+      setShareModalVisible(false);
+      setSelectedPrizeToShare(null);
+      // Reload to update shared status
+      await loadPrizes();
+    } catch (error) {
+      console.error('Error sharing reward:', error);
+      Alert.alert('Error', 'Failed to share reward');
+    }
+  };
+
   return (
     <PaperProvider>
       <View style={styles.container}>
@@ -243,13 +285,28 @@ const PrizesPage = () => {
             <Text style={styles.pointsText}>Your Points: {profile.points || 0}</Text>
           </View>
         )}
+
+        {/* View Mode Toggle */}
+        <SegmentedButtons
+          value={viewMode}
+          onValueChange={(value) => setViewMode(value as 'my' | 'shared')}
+          buttons={[
+            { value: 'my', label: 'My Rewards', icon: 'gift' },
+            { 
+              value: 'shared', 
+              label: `Shared (${sharedRewards.length})`, 
+              icon: 'share-variant' 
+            },
+          ]}
+          style={styles.segmentedButtons}
+        />
         
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#6200ee" />
             <Text>Loading rewards...</Text>
           </View>
-        ) : (
+        ) : viewMode === 'my' ? (
           <ScrollView>
             {/* Active Rewards */}
             {prizes.filter(p => !p.completed).map(prize => (
@@ -265,6 +322,9 @@ const PrizesPage = () => {
                 onCancel={() => handleCancel(prize)}
                 onCompleted={() => handleCompleted(prize)}
                 onCardPress={handleCardPress}
+                onShare={() => handleShareReward(prize)}
+                isOwner={true}
+                isShared={false}
               />
             ))}
 
@@ -294,9 +354,42 @@ const PrizesPage = () => {
                     onCancel={() => handleCancel(prize)}
                     onCompleted={() => handleCompleted(prize)}
                     onCardPress={handleCardPress}
+                    isOwner={true}
+                    isShared={false}
                   />
                 ))}
               </View>
+            )}
+          </ScrollView>
+        ) : (
+          <ScrollView>
+            {/* Shared Rewards */}
+            {sharedRewards.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <AntDesign name="sharealt" size={64} color="#ccc" />
+                <Text style={styles.emptyStateText}>No rewards shared with you yet</Text>
+                <Text style={styles.emptyStateSubtext}>
+                  When someone shares a reward with you, it will appear here
+                </Text>
+              </View>
+            ) : (
+              sharedRewards.map(prize => (
+                <PrizeCard
+                  key={prize._id || prize.id}
+                  title={prize.title}
+                  subtitle={prize.description}
+                  content={prize.description}
+                  imageUrl={prize.imageUrl}
+                  pointsRequired={prize.points}
+                  isCompleted={prize.completed || false}
+                  userPoints={profile?.points || 0}
+                  onCancel={() => handleCancel(prize)}
+                  onCompleted={() => handleCompleted(prize)}
+                  onCardPress={handleCardPress}
+                  isOwner={false}
+                  isShared={true}
+                />
+              ))
             )}
           </ScrollView>
         )}
@@ -362,6 +455,18 @@ const PrizesPage = () => {
             </Dialog.Actions>
           </Dialog>
         </Portal>
+        
+        {/* Share Modal */}
+        <ShareRewardModal
+          visible={shareModalVisible}
+          onClose={() => {
+            setShareModalVisible(false);
+            setSelectedPrizeToShare(null);
+          }}
+          onShare={handleShareSubmit}
+          currentUserId={profile?._id || ''}
+          alreadySharedWith={selectedPrizeToShare?.sharedWith || []}
+        />
         
         <FavButton onPress={() => setVisible(true)} />
       </View>
@@ -439,6 +544,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#6200ee',
+  },
+  segmentedButtons: {
+    marginBottom: 16,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 

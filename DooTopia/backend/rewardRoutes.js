@@ -43,7 +43,8 @@ rewardRoutes.route("/rewards").post(async (request, response) => {
         userId: request.body.userId,
         imageUrl: request.body.imageUrl,
         completed: false,
-        owner: request.body.userId
+        owner: request.body.userId,
+        sharedWith: request.body.sharedWith || [] // Array of user IDs reward is shared with
     };
     let result = await db.collection("rewards").insertOne(newReward);
     response.status(201).json({ ...newReward, _id: result.insertedId });
@@ -60,6 +61,7 @@ rewardRoutes.route("/rewards/:id").put(async (request, response) => {
         if (request.body.description !== undefined) updatedReward.description = request.body.description;
         if (request.body.completed !== undefined) updatedReward.completed = request.body.completed;
         if (request.body.imageUrl !== undefined) updatedReward.imageUrl = request.body.imageUrl;
+        if (request.body.sharedWith !== undefined) updatedReward.sharedWith = request.body.sharedWith;
         
         let result = await db.collection("rewards").updateOne(
             { _id: new ObjectId(request.params.id) },
@@ -92,6 +94,77 @@ rewardRoutes.route("/rewards/:id").delete(async (request, response) => {
     }
 });
 
-module.exports = rewardRoutes;
+// Get rewards shared with a specific user
+rewardRoutes.route("/rewards/shared/:userId").get(async (request, response) => {
+    try {
+        let db = database.getdb();
+        const userId = request.params.userId;
+        
+        // Find all rewards where the user is in the sharedWith array
+        let data = await db.collection("rewards")
+            .find({ 
+                sharedWith: userId,
+                completed: false // Only show unclaimed rewards
+            })
+            .toArray();
+        
+        response.status(200).json(data);
+    } catch (error) {
+        console.error('Error fetching shared rewards:', error);
+        response.status(500).json({ error: "Failed to fetch shared rewards", details: error.message });
+    }
+});
+
+// Share a reward with specific users
+rewardRoutes.route("/rewards/:id/share").post(async (request, response) => {
+    try {
+        let db = database.getdb();
+        const { userIds } = request.body; // Array of user IDs to share with
+        
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+            return response.status(400).json({ error: "userIds must be a non-empty array" });
+        }
+        
+        let result = await db.collection("rewards").updateOne(
+            { _id: new ObjectId(request.params.id) },
+            { $addToSet: { sharedWith: { $each: userIds } } } // Add users to sharedWith array without duplicates
+        );
+        
+        if (result.modifiedCount > 0 || result.matchedCount > 0) {
+            response.status(200).json({ message: "Reward shared successfully" });
+        } else {
+            response.status(404).json({ error: "Reward not found" });
+        }
+    } catch (error) {
+        console.error('Error sharing reward:', error);
+        response.status(500).json({ error: "Failed to share reward", details: error.message });
+    }
+});
+
+// Remove users from shared reward
+rewardRoutes.route("/rewards/:id/unshare").post(async (request, response) => {
+    try {
+        let db = database.getdb();
+        const { userIds } = request.body; // Array of user IDs to remove
+        
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+            return response.status(400).json({ error: "userIds must be a non-empty array" });
+        }
+        
+        let result = await db.collection("rewards").updateOne(
+            { _id: new ObjectId(request.params.id) },
+            { $pull: { sharedWith: { $in: userIds } } } // Remove users from sharedWith array
+        );
+        
+        if (result.modifiedCount > 0 || result.matchedCount > 0) {
+            response.status(200).json({ message: "Users removed from shared reward" });
+        } else {
+            response.status(404).json({ error: "Reward not found" });
+        }
+    } catch (error) {
+        console.error('Error unsharing reward:', error);
+        response.status(500).json({ error: "Failed to unshare reward", details: error.message });
+    }
+});
 
 module.exports = rewardRoutes;
