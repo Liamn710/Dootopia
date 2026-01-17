@@ -1,11 +1,8 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Avatar, Button, Card, Chip, Text } from 'react-native-paper';
+import React from "react";
+import { StyleSheet, View } from "react-native";
+import { Avatar, Button, Card, Chip, Text } from "react-native-paper";
 //include ant design icons
-import { AntDesign } from '@expo/vector-icons';
-
-
-
+import { AntDesign } from "@expo/vector-icons";
 
 interface PrizeCardProps {
   title: string;
@@ -18,41 +15,54 @@ interface PrizeCardProps {
   onCancel: () => void;
   onCompleted: () => void;
   onCardPress?: () => void;
+  onEdit?: () => void; // New prop for edit functionality
   onShare?: () => void; // New prop for share functionality
   isOwner?: boolean; // Whether current user is the owner
   isShared?: boolean; // Whether this reward was shared with current user
 }
 
-const LeftContent = (props: any) => <Avatar.Icon {...props} icon={() => <AntDesign name="gift" size={20} color="white" />} />;
+const LeftContent = (props: any) => (
+  <Avatar.Icon
+    {...props}
+    icon={() => <AntDesign name="gift" size={20} color="white" />}
+  />
+);
 
 export const PrizeCard: React.FC<PrizeCardProps> = ({
   title,
   subtitle,
   content,
-  imageUrl = 'https://picsum.photos/700',
+  imageUrl = "https://picsum.photos/700",
   pointsRequired,
   isCompleted,
   userPoints,
   onCancel,
   onCompleted,
   onCardPress,
+  onEdit,
   onShare,
   isOwner = true,
-  isShared = false
+  isShared = false,
 }) => {
   const hasEnoughPoints = userPoints >= pointsRequired;
 
   return (
-    <Card onPress={onCardPress} style={[styles.card, isCompleted ? styles.completedCard : undefined]}>
-      <Card.Title 
-        title={title} 
-        subtitle={subtitle} 
+    <Card
+      onPress={onCardPress}
+      onLongPress={isOwner && !isCompleted && onEdit ? onEdit : undefined}
+      style={[styles.card, isCompleted ? styles.completedCard : undefined]}
+    >
+      <Card.Title
+        title={title}
+        subtitle={subtitle}
         left={LeftContent}
         right={(props) => (
           <>
             {isShared && (
-              <Chip 
-                icon={() => <AntDesign name="sharealt" size={16} color="#6200ee" />}
+              <Chip
+                icon={() => (
+                  <AntDesign name="sharealt" size={16} color="#6200ee" />
+                )}
                 style={styles.sharedBadge}
                 textStyle={styles.sharedBadgeText}
               >
@@ -60,11 +70,13 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
               </Chip>
             )}
             {isOwner && onShare && !isCompleted && (
-              <Button 
+              <Button
                 {...props}
                 onPress={onShare}
                 mode="text"
-                icon={() => <AntDesign name="sharealt" size={18} color="#6200ee" />}
+                icon={() => (
+                  <AntDesign name="sharealt" size={18} color="#6200ee" />
+                )}
                 compact
               >
                 Share
@@ -77,22 +89,25 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
         <Text variant="titleLarge">{title}</Text>
         <Text variant="bodyMedium">{content}</Text>
         <View style={styles.pointsChipContainer}>
-          <Chip 
+          <Chip
             icon={() => <AntDesign name="star" size={20} color="white" />}
             style={[
               styles.pointsChip,
-              !hasEnoughPoints && !isCompleted && styles.insufficientPoints
+              !hasEnoughPoints && !isCompleted && styles.insufficientPoints,
             ]}
           >
             {pointsRequired} points required
           </Chip>
           {!hasEnoughPoints && !isCompleted && (
             <Text style={styles.warningText}>
-              Need {pointsRequired - userPoints} 
+              Need {pointsRequired - userPoints}
             </Text>
           )}
           {isCompleted && (
-            <Chip icon={() => <AntDesign name="check" size={20} color="white" />} style={styles.completedChip}>
+            <Chip
+              icon={() => <AntDesign name="check" size={20} color="white" />}
+              style={styles.completedChip}
+            >
               Completed
             </Chip>
           )}
@@ -100,7 +115,7 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
       </Card.Content>
       <Card.Cover source={{ uri: imageUrl }} />
       <Card.Actions style={styles.cardActions}>
-        <Button 
+        <Button
           onPress={onCancel}
           disabled={isCompleted}
           mode="outlined"
@@ -108,22 +123,22 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
           buttonColor="#fff"
           style={styles.deleteButton}
         >
-          {isOwner ? 'Delete' : 'Remove'}
+          {isOwner ? "Delete" : "Remove"}
         </Button>
-        <Button 
+        <Button
           onPress={onCompleted}
           disabled={!hasEnoughPoints || isCompleted}
-          mode={hasEnoughPoints && !isCompleted ? 'contained' : 'text'}
+          mode={hasEnoughPoints && !isCompleted ? "contained" : "text"}
           style={styles.completeButton}
         >
-          {isCompleted ? 'Completed' : isShared ? 'Claim' : 'Complete'}
+          {isCompleted ? "Completed" : isShared ? "Claim" : "Complete"}
         </Button>
       </Card.Actions>
     </Card>
   );
 };
 
- const styles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
@@ -132,48 +147,48 @@ export const PrizeCard: React.FC<PrizeCardProps> = ({
     marginBottom: 16,
   },
   completedCard: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: "#e0e0e0",
     opacity: 0.7,
   },
   pointsChipContainer: {
     marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
   },
   pointsChip: {
-    backgroundColor: '#6200ee',
+    backgroundColor: "#6200ee",
   },
   insufficientPoints: {
-    backgroundColor: '#ff6b6b',
+    backgroundColor: "#ff6b6b",
   },
   completedChip: {
-    backgroundColor: '#4caf50',
+    backgroundColor: "#4caf50",
   },
   warningText: {
-    color: '#ff6b6b',
+    color: "#ff6b6b",
     fontSize: 12,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   cardActions: {
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   deleteButton: {
-    borderColor: '#d32f2f',
+    borderColor: "#d32f2f",
     borderWidth: 1,
   },
   completeButton: {
     minWidth: 100,
   },
   sharedBadge: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: "#e3f2fd",
     marginRight: 8,
   },
   sharedBadgeText: {
-    color: '#6200ee',
+    color: "#6200ee",
     fontSize: 12,
   },
 });
