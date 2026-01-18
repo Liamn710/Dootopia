@@ -10,6 +10,9 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
 } from "react-native";
 import {
   Button,
@@ -398,29 +401,45 @@ const PrizesPage = () => {
             <Text>Loading rewards...</Text>
           </View>
         ) : viewMode === "my" ? (
-          <ScrollView>
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContent,
+              isDesktop && styles.scrollContentDesktop,
+            ]}
+          >
             {/* Active Rewards */}
-            {prizes
-              .filter((p) => !p.completed)
-              .map((prize) => (
-                <PrizeCard
-                  key={prize._id || prize.id}
-                  title={prize.title}
-                  subtitle={prize.description}
-                  content={prize.description}
-                  imageUrl={prize.imageUrl}
-                  pointsRequired={prize.points}
-                  isCompleted={false}
-                  userPoints={profile?.points || 0}
-                  onCancel={() => handleCancel(prize)}
-                  onCompleted={() => handleCompleted(prize)}
-                  onCardPress={handleCardPress}
-                  onEdit={() => handleEditPrize(prize)}
-                  onShare={() => handleShareReward(prize)}
-                  isOwner={true}
-                  isShared={false}
-                />
-              ))}
+            <View
+              style={[styles.cardsGrid, isDesktop && styles.cardsGridDesktop]}
+            >
+              {prizes
+                .filter((p) => !p.completed)
+                .map((prize) => (
+                  <View
+                    key={prize._id || prize.id}
+                    style={[
+                      styles.cardWrapper,
+                      isDesktop && styles.cardWrapperDesktop,
+                    ]}
+                  >
+                    <PrizeCard
+                      title={prize.title}
+                      subtitle={prize.description}
+                      content={prize.description}
+                      imageUrl={prize.imageUrl}
+                      pointsRequired={prize.points}
+                      isCompleted={false}
+                      userPoints={profile?.points || 0}
+                      onCancel={() => handleCancel(prize)}
+                      onCompleted={() => handleCompleted(prize)}
+                      onCardPress={handleCardPress}
+                      onEdit={() => handleEditPrize(prize)}
+                      onShare={() => handleShareReward(prize)}
+                      isOwner={true}
+                      isShared={false}
+                    />
+                  </View>
+                ))}
+            </View>
 
             {/* Completed Section */}
             {prizes.filter((p) => p.completed).length > 0 && (
@@ -439,31 +458,51 @@ const PrizesPage = () => {
                     color="#6200ee"
                   />
                 </TouchableOpacity>
-                {showCompleted &&
-                  prizes
-                    .filter((p) => p.completed)
-                    .map((prize) => (
-                      <PrizeCard
-                        key={prize._id || prize.id}
-                        title={prize.title}
-                        subtitle={prize.description}
-                        content={prize.description}
-                        imageUrl={prize.imageUrl}
-                        pointsRequired={prize.points}
-                        isCompleted={true}
-                        userPoints={profile?.points || 0}
-                        onCancel={() => handleCancel(prize)}
-                        onCompleted={() => handleCompleted(prize)}
-                        onCardPress={handleCardPress}
-                        isOwner={true}
-                        isShared={false}
-                      />
-                    ))}
+                {showCompleted && (
+                  <View
+                    style={[
+                      styles.cardsGrid,
+                      isDesktop && styles.cardsGridDesktop,
+                    ]}
+                  >
+                    {prizes
+                      .filter((p) => p.completed)
+                      .map((prize) => (
+                        <View
+                          key={prize._id || prize.id}
+                          style={[
+                            styles.cardWrapper,
+                            isDesktop && styles.cardWrapperDesktop,
+                          ]}
+                        >
+                          <PrizeCard
+                            title={prize.title}
+                            subtitle={prize.description}
+                            content={prize.description}
+                            imageUrl={prize.imageUrl}
+                            pointsRequired={prize.points}
+                            isCompleted={true}
+                            userPoints={profile?.points || 0}
+                            onCancel={() => handleCancel(prize)}
+                            onCompleted={() => handleCompleted(prize)}
+                            onCardPress={handleCardPress}
+                            isOwner={true}
+                            isShared={false}
+                          />
+                        </View>
+                      ))}
+                  </View>
+                )}
               </View>
             )}
           </ScrollView>
         ) : (
-          <ScrollView>
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContent,
+              isDesktop && styles.scrollContentDesktop,
+            ]}
+          >
             {/* Shared Rewards */}
             {sharedRewards.length === 0 ? (
               <View style={styles.emptyStateContainer}>
@@ -476,23 +515,34 @@ const PrizesPage = () => {
                 </Text>
               </View>
             ) : (
-              sharedRewards.map((prize) => (
-                <PrizeCard
-                  key={prize._id || prize.id}
-                  title={prize.title}
-                  subtitle={prize.description}
-                  content={prize.description}
-                  imageUrl={prize.imageUrl}
-                  pointsRequired={prize.points}
-                  isCompleted={prize.completed || false}
-                  userPoints={profile?.points || 0}
-                  onCancel={() => handleCancel(prize)}
-                  onCompleted={() => handleCompleted(prize)}
-                  onCardPress={handleCardPress}
-                  isOwner={false}
-                  isShared={true}
-                />
-              ))
+              <View
+                style={[styles.cardsGrid, isDesktop && styles.cardsGridDesktop]}
+              >
+                {sharedRewards.map((prize) => (
+                  <View
+                    key={prize._id || prize.id}
+                    style={[
+                      styles.cardWrapper,
+                      isDesktop && styles.cardWrapperDesktop,
+                    ]}
+                  >
+                    <PrizeCard
+                      title={prize.title}
+                      subtitle={prize.description}
+                      content={prize.description}
+                      imageUrl={prize.imageUrl}
+                      pointsRequired={prize.points}
+                      isCompleted={prize.completed || false}
+                      userPoints={profile?.points || 0}
+                      onCancel={() => handleCancel(prize)}
+                      onCompleted={() => handleCompleted(prize)}
+                      onCardPress={handleCardPress}
+                      isOwner={false}
+                      isShared={true}
+                    />
+                  </View>
+                ))}
+              </View>
             )}
           </ScrollView>
         )}
@@ -634,6 +684,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+  } as ViewStyle,
+  scrollContent: {
+    flexGrow: 1,
+  },
+  scrollContentDesktop: {
+    maxWidth: 1200,
+    width: "100%",
+    alignSelf: "center",
+  },
+  cardsGrid: {
+    width: "100%",
+  },
+  cardsGridDesktop: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+    gap: 16,
+  },
+  cardWrapper: {
+    width: "100%",
+  },
+  cardWrapperDesktop: {
+    width: "calc(50% - 8px)",
+    minWidth: 350,
+    maxWidth: 500,
   },
   pointsContainer: {
     backgroundColor: "#6200ee",
@@ -654,7 +729,7 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 8,
-  },
+  } as TextStyle,
   imageSection: {
     marginTop: 12,
   },
@@ -730,4 +805,3 @@ export default PrizesPage;
 
 //TODO :: add ability to edit and delete prizes
 //TODO :: improve UI/UX of the prizes page
-//
