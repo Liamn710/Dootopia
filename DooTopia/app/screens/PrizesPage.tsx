@@ -7,12 +7,11 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
-  ViewStyle,
   TextStyle,
-  ImageStyle,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+  ViewStyle
 } from "react-native";
 import {
   Button,
@@ -706,7 +705,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   cardWrapperDesktop: {
-    width: "calc(50% - 8px)",
+    width: "48%",
     minWidth: 350,
     maxWidth: 500,
   },
@@ -740,11 +739,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: 8,
-  },
+  } as ViewStyle,
   uploadingText: {
     marginLeft: 8,
     color: "#666",
-  },
+  } as TextStyle,
   imagePreview: {
     flexDirection: "row",
     alignItems: "center",
