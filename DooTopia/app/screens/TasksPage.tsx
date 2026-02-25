@@ -177,11 +177,12 @@ const TasksPage = () => {
       .filter(task => matchesAssignee(task) && matchesTags(task));
   }, [lists, tasksArray, matchesAssignee, matchesTags]);
 
-  // Filter lists to only show those with matching tasks
+  // Filter lists to only show those with matching tasks or empty lists
   const filteredLists = useMemo(() => {
     return lists.filter(list => {
       const listTasks = tasksArray.filter(task => list.taskIds?.includes(task.id));
-      // Check if any task in the list matches the current filters
+      // Show list if it has no tasks (empty list) or if any task matches filters
+      if (listTasks.length === 0) return true;
       return listTasks.some(task => matchesAssignee(task) && matchesTags(task));
     });
   }, [lists, tasksArray, matchesAssignee, matchesTags]);
